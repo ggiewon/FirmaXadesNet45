@@ -77,20 +77,20 @@ namespace TestFirmaXades
                 string mimeType = "application/" + 
                     System.IO.Path.GetExtension(txtFichero.Text).ToLower().Replace(".", "");
 
-                _firmaXades.InsertarDocumentoInternallyDetached(txtFichero.Text, mimeType);
+                _firmaXades.InsertarFicheroInternallyDetached(txtFichero.Text, mimeType);
             }
             else if (rbExternallyDetached.Checked)
             {
-                _firmaXades.InsertarDocumentoExternallyDetached(txtFichero.Text);
+                _firmaXades.InsertarFicheroExternallyDetached(txtFichero.Text);
             }
             else if (rbEnveloped.Checked)
             {
                 _firmaXades.InsertarFicheroEnveloped(txtFichero.Text);
             }
 
-            TipoAlgoritmoFirma tipoFima = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
 
-            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoFima);
+            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoFirma);
 
             MessageBox.Show("Firma completada, ahora puede Guardar la firma o ampliarla a Xades-T.", "Test firma XADES", 
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -103,7 +103,9 @@ namespace TestFirmaXades
             _firmaXades.PolicyHash = txtHashPolitica.Text;
             _firmaXades.PolicyUri = txtURIPolitica.Text;
 
-            _firmaXades.CoFirmar(_firmaXades.SeleccionarCertificado());
+            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+
+            _firmaXades.CoFirmar(_firmaXades.SeleccionarCertificado(), tipoFirma);
 
             MessageBox.Show("Firma completada correctamente.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -166,8 +168,18 @@ namespace TestFirmaXades
         {
             if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                _firmaXades.CargarFirma(openFileDialog1.FileName);
-                MessageBox.Show("Firma cargada correctamente.");
+                var firmas = FirmaXades.CargarFirma(openFileDialog1.FileName);
+
+                FrmSeleccionarFirma frm = new FrmSeleccionarFirma(firmas);
+
+                if (frm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    _firmaXades = frm.FirmaSeleccionada;
+                }
+                else
+                {
+                    MessageBox.Show("Debe seleccionar una firma.");
+                }                
             }            
         }
 
@@ -178,7 +190,9 @@ namespace TestFirmaXades
             _firmaXades.PolicyHash = txtHashPolitica.Text;
             _firmaXades.PolicyUri = txtURIPolitica.Text;
 
-            _firmaXades.ContraFirma(_firmaXades.SeleccionarCertificado());
+            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+
+            _firmaXades.ContraFirma(_firmaXades.SeleccionarCertificado(), tipoFirma);
 
             MessageBox.Show("Firma completada correctamente.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
