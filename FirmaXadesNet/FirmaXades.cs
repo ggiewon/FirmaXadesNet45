@@ -223,11 +223,47 @@ namespace FirmaXadesNet
         }
 
         /// <summary>
+        /// Carga el documento XML especificado y establece para firmar el elemento especificado en idAFirmar
+        /// </summary>
+        /// <param name="contenidoXml"></param>
+        /// <param name="idAFirmar"></param>
+        /// <param name="mimeType"></param>
+        public void FirmarElementoInternallyDetached(string contenidoXml, string idAFirmar, string mimeType)
+        {
+            _xmlDocument = new XmlDocument();
+            _xmlDocument.PreserveWhitespace = true;
+            _xmlDocument.LoadXml(contenidoXml);
+
+            Reference reference = new Reference();
+
+            reference.Uri = "#" + idAFirmar;
+            reference.Id = "Reference-" + Guid.NewGuid().ToString();
+
+            _objectReference = reference.Id;
+            _mimeType = mimeType;
+
+            if (mimeType == "text/xml")
+            {
+                XmlDsigC14NTransform transform = new XmlDsigC14NTransform();
+                reference.AddTransform(transform);
+            }
+            else
+            {
+                XmlDsigBase64Transform transform = new XmlDsigBase64Transform();
+                reference.AddTransform(transform);
+            }
+
+            _xadesSignedXml = new XadesSignedXml(_xmlDocument);
+
+            _xadesSignedXml.AddReference(reference);
+        }
+
+        /// <summary>
         /// Inserta un documento para generar una firma internally detached.
         /// </summary>
         /// <param name="contenido"></param>
         /// <param name="mimeType"></param>
-        public void InsertarFicheroInternallyDetached(byte[] contenido, string mimeType)
+        public void InsertarFicheroInternallyDetached(byte[] contenido, string mimeType, string nombreFichero = null)
         {
             _xmlDocument = new XmlDocument();
 
@@ -257,6 +293,24 @@ namespace FirmaXadesNet
                 XmlDsigC14NTransform transform = new XmlDsigC14NTransform();
                 reference.AddTransform(transform);
             }
+            else if (mimeType == "hash/sha256")
+            {
+                contentElement.SetAttribute("Encoding", "http://www.w3.org/2000/09/xmldsig#base64");
+                contentElement.SetAttribute("MimeType", mimeType);
+
+                if (!string.IsNullOrEmpty(nombreFichero))
+                {
+                    contentElement.SetAttribute("URI", Path.GetFileName(nombreFichero));
+                }
+
+                using (SHA256 sha2 = SHA256.Create())
+                {
+                    contentElement.InnerText = Convert.ToBase64String(sha2.ComputeHash(contenido));
+                }
+
+                XmlDsigBase64Transform transform = new XmlDsigBase64Transform();
+                reference.AddTransform(transform);
+            }
             else
             {
                 contentElement.SetAttribute("Encoding", "http://www.w3.org/2000/09/xmldsig#base64");
@@ -284,19 +338,15 @@ namespace FirmaXadesNet
         /// <param name="mimeType"></param>
         public void InsertarFicheroInternallyDetached(string nombreFichero, string mimeType)
         {
-            using (MemoryStream msContent = new MemoryStream())
+            byte[] contenido = File.ReadAllBytes(nombreFichero);
+
+            if (mimeType.StartsWith("hash"))
             {
-                FileStream fs = new FileStream(nombreFichero, FileMode.Open);
-                byte[] buffer = new byte[1024];
-                int readed = 0;
-
-                while ((readed = fs.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    msContent.Write(buffer, 0, readed);
-                }
-                fs.Close();
-
-                InsertarFicheroInternallyDetached(msContent.ToArray(), mimeType);
+                InsertarFicheroInternallyDetached(contenido, mimeType, nombreFichero);
+            }
+            else
+            {
+                InsertarFicheroInternallyDetached(contenido, mimeType);
             }
         }
 
@@ -313,7 +363,7 @@ namespace FirmaXadesNet
 
             reference.Uri = "file://" + nombreFichero.Replace("\\", "/");
             reference.Id = "Reference-" + Guid.NewGuid().ToString();
-            
+
             if (reference.Uri.EndsWith(".xml") || reference.Uri.EndsWith(".XML"))
             {
                 _mimeType = "text/xml";
@@ -373,7 +423,7 @@ namespace FirmaXadesNet
             }
 
             XmlDsigEnvelopedSignatureTransform xmlDsigEnvelopedSignatureTransform = new XmlDsigEnvelopedSignatureTransform();
-            reference.AddTransform(xmlDsigEnvelopedSignatureTransform);            
+            reference.AddTransform(xmlDsigEnvelopedSignatureTransform);
 
             _objectReference = reference.Id;
 
@@ -402,7 +452,7 @@ namespace FirmaXadesNet
 
             reference.Id = "Reference-" + Guid.NewGuid().ToString();
             reference.Uri = "#" + dataObjectId;
-            reference.Type = SignedXml.XmlDsigNamespaceUrl + "Object";            
+            reference.Type = SignedXml.XmlDsigNamespaceUrl + "Object";
 
             _objectReference = reference.Id;
             _mimeType = "text/xml";
@@ -444,7 +494,47 @@ namespace FirmaXadesNet
                 }
                 else
                 {
-                    _xmlDocument.DocumentElement.AppendChild(_xadesSignedXml.GetXml());
+                    XmlElement xmlSigned = _xadesSignedXml.GetXml();
+
+                    var namespaces = _xadesSignedXml.GetAllNamespaces(_xadesSignedXml.ContentElement);
+
+                    foreach (XmlAttribute attr in namespaces)
+                    {
+                        XmlAttribute newAttr = xmlSigned.OwnerDocument.CreateAttribute(attr.Name);
+                        newAttr.Value = attr.Value;
+
+                        xmlSigned.Attributes.Append(newAttr);
+                    }
+
+                    MemoryStream canonicalizedStream;
+                    XmlDsigC14NTransform xmlDsigC14NTransform;
+                    UTF8Encoding encoding = new UTF8Encoding(false);
+                    byte[] buffer = encoding.GetBytes(xmlSigned.OuterXml);
+
+                    using (MemoryStream ms = new MemoryStream(buffer))
+                    {
+                        xmlDsigC14NTransform = new XmlDsigC14NTransform();
+                        xmlDsigC14NTransform.LoadInput(ms);
+                        canonicalizedStream = (MemoryStream)xmlDsigC14NTransform.GetOutput(typeof(Stream));
+                        canonicalizedStream.Flush();
+                    }
+
+                    XmlDocument doc = new XmlDocument();
+                    doc.PreserveWhitespace = true;
+                    doc.Load(canonicalizedStream);
+
+                    XmlNode canonSignature = _xmlDocument.ImportNode(doc.DocumentElement, true);
+
+                    if (_xadesSignedXml.ContentElement.ParentNode.NodeType != XmlNodeType.Document)
+                    {
+                        _xadesSignedXml.ContentElement.ParentNode.AppendChild(canonSignature);
+                    }
+                    else
+                    {
+                        _xadesSignedXml.ContentElement.AppendChild(canonSignature);
+                    }
+
+                    canonicalizedStream.Dispose();
                 }
             }
             else
@@ -573,7 +663,7 @@ namespace FirmaXadesNet
             XadesSignedXml counterSignature = new XadesSignedXml(_xmlDocument);
 
             RSACryptoServiceProvider rsaKey = ObtenerCryptoServiceProvider();
-            
+
             counterSignature.SigningKey = rsaKey;
 
             Reference reference = new Reference();
@@ -648,17 +738,13 @@ namespace FirmaXadesNet
                 this.Documento.Save(writer);
             }
         }
-
+        
         /// <summary>
         /// Carga un archivo de firma.
         /// </summary>
         /// <param name="nombreFichero"></param>
-        public static FirmaXades[] CargarFirma(string nombreFichero)
+        public static FirmaXades[] CargarFirma(XmlDocument document)
         {
-            XmlDocument document = new XmlDocument();
-            document.PreserveWhitespace = true;
-            document.Load(nombreFichero);
-
             XmlNodeList signatureNodeList = document.GetElementsByTagName("Signature", SignedXml.XmlDsigNamespaceUrl);
 
             if (signatureNodeList.Count == 0)
@@ -691,6 +777,8 @@ namespace FirmaXadesNet
 
                 firma._chain = new X509Chain();
                 firma._chain.Build(firma._certificate);
+
+                firma._xadesSignedXml.FindContentElement();
 
                 firmas.Add(firma);
             }
@@ -773,11 +861,11 @@ namespace FirmaXadesNet
 
             return rsaKey;
         }
-        
+
         private void InsertarInfoCertificado()
         {
             RSACryptoServiceProvider rsaKey = ObtenerCryptoServiceProvider();
-           
+
             _xadesSignedXml.SigningKey = rsaKey;
 
             KeyInfo keyInfo = new KeyInfo();
@@ -821,7 +909,7 @@ namespace FirmaXadesNet
                     cert.CertDigest.DigestValue = shaManaged.ComputeHash(certificado.GetRawCertData());
                 }
             }
-            
+
             signedSignatureProperties.SigningCertificate.CertCollection.Add(cert);
 
             if (!string.IsNullOrEmpty(_policyIdentifier))
@@ -863,7 +951,7 @@ namespace FirmaXadesNet
         private void ComputarFirma()
         {
             try
-            {                
+            {
                 _xadesSignedXml.ComputeSignature();
                 _xadesSignedXml.SignatureValueId = _signatureValueId;
             }
@@ -888,7 +976,7 @@ namespace FirmaXadesNet
             {
                 signatureValueElementXpaths = new ArrayList();
                 signatureValueElementXpaths.Add("ds:SignatureValue");
-                signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_xadesSignedXml.GetXml(), signatureValueElementXpaths);
+                signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_xadesSignedXml.GetXml(), signatureValueElementXpaths, _xadesSignedXml);
 
                 byte[] tsa = TimeStampClient.GetTimeStamp(_tsaServer, signatureValueHash, true);
 
@@ -1035,8 +1123,8 @@ namespace FirmaXadesNet
         /// <param name="unsignedProperties"></param>
         /// <param name="addCertValue"></param>
         private void InsertarCertificado(X509Certificate2 cert, UnsignedProperties unsignedProperties, bool addCert)
-        {            
-            string digest = Convert.ToBase64String(cert.GetCertHash()); 
+        {
+            string digest = Convert.ToBase64String(cert.GetCertHash());
 
             if (_certificatesChecked.Contains(digest))
             {
@@ -1313,7 +1401,7 @@ namespace FirmaXadesNet
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:SignatureTimeStamp");
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteCertificateRefs");
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteRevocationRefs");
-            signatureValueHash = XMLUtil.ComputeHashValueOfElementList((XmlElement)xmlNodoFirma, signatureValueElementXpaths);
+            signatureValueHash = XMLUtil.ComputeHashValueOfElementList((XmlElement)xmlNodoFirma, signatureValueElementXpaths, _xadesSignedXml);
 
             byte[] tsa = TimeStampClient.GetTimeStamp(_tsaServer, signatureValueHash, true);
 

@@ -43,13 +43,13 @@ namespace FirmaXadesNet
         /// <param name="signatureXmlElement"></param>
         /// <param name="elementXpaths"></param>
         /// <returns></returns>
-        public static byte[] ComputeHashValueOfElementList(XmlElement signatureXmlElement, ArrayList elementXpaths)
+        public static byte[] ComputeHashValueOfElementList(XmlElement signatureXmlElement, ArrayList elementXpaths,
+            XadesSignedXml xadesSignedXml)
         {
             XmlDocument xmlDocument;
             XmlNamespaceManager xmlNamespaceManager;
             XmlNodeList searchXmlNodeList;
-            XmlDsigC14NTransform xmlDsigC14NTransform;
-            MemoryStream msResult = new MemoryStream();
+            XmlDsigC14NTransform xmlDsigC14NTransform;            
             byte[] retVal;
             UTF8Encoding encoding = new UTF8Encoding(false);
 
@@ -58,72 +58,61 @@ namespace FirmaXadesNet
             xmlNamespaceManager.AddNamespace("ds", SignedXml.XmlDsigNamespaceUrl);
             xmlNamespaceManager.AddNamespace("xades", XadesSignedXml.XadesNamespaceUri);
 
-            // obtiene los namespaces del elemento raiz, necesarios para calcular el hash de una firma enveloped
-            Dictionary<string, string> namespaces = new Dictionary<string, string>();
+            var namespaces = xadesSignedXml.GetAllNamespaces(xadesSignedXml.ContentElement);
 
-            if (xmlDocument.DocumentElement != null)
+            using (MemoryStream msResult = new MemoryStream())
             {
-                foreach (XmlAttribute attr in xmlDocument.DocumentElement.Attributes)
+                foreach (string elementXpath in elementXpaths)
                 {
-                    if (attr.Name.StartsWith("xmlns"))
+                    searchXmlNodeList = signatureXmlElement.SelectNodes(elementXpath, xmlNamespaceManager);
+
+                    if (searchXmlNodeList.Count == 0)
                     {
-                        namespaces.Add(attr.Name, attr.Value);
+                        throw new CryptographicException("Element " + elementXpath + " not found while calculating hash");
+                    }
+
+                    foreach (XmlNode xmlNode in searchXmlNodeList)
+                    {
+                        if (xmlNode.Name == "ds:SignatureValue")
+                        {
+                            XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlXadesPrefix);
+                            xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
+                            xmlNode.Attributes.Append(xadesNamespace);
+                        }
+                        else
+                        {
+                            XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlDSigPrefix);
+                            xadesNamespace.Value = XadesSignedXml.XmlDsigNamespaceUrl;
+                            xmlNode.Attributes.Append(xadesNamespace);
+                        }
+
+                        foreach (var attr in namespaces)
+                        {
+                            XmlAttribute attrNamespace = xmlDocument.CreateAttribute(attr.Name);
+                            attrNamespace.Value = attr.Value;
+                            xmlNode.Attributes.Append(attrNamespace);
+                        }
+
+                        byte[] buffer = encoding.GetBytes(xmlNode.OuterXml);
+
+                        using (MemoryStream ms = new MemoryStream(buffer))
+                        {
+                            xmlDsigC14NTransform = new XmlDsigC14NTransform();
+                            xmlDsigC14NTransform.LoadInput(ms);
+                            MemoryStream canonicalizedStream = (MemoryStream)xmlDsigC14NTransform.GetOutput(typeof(Stream));
+                            canonicalizedStream.Flush();
+                            canonicalizedStream.WriteTo(msResult);
+                        }
                     }
                 }
-            }
 
-            foreach (string elementXpath in elementXpaths)
-            {
-                searchXmlNodeList = signatureXmlElement.SelectNodes(elementXpath, xmlNamespaceManager);
-
-                if (searchXmlNodeList.Count == 0)
+                using (SHA1 sha1 = SHA1.Create())
                 {
-                    throw new CryptographicException("Element " + elementXpath + " not found while calculating hash");
+                    retVal = sha1.ComputeHash(msResult.ToArray());
                 }
 
-                foreach (XmlNode xmlNode in searchXmlNodeList)
-                {
-                    if (xmlNode.Name == "ds:SignatureValue")
-                    {
-                        XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlXadesPrefix);
-                        xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
-                        xmlNode.Attributes.Append(xadesNamespace);
-                    }
-                    else
-                    {
-                        XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlDSigPrefix);
-                        xadesNamespace.Value = XadesSignedXml.XmlDsigNamespaceUrl;
-                        xmlNode.Attributes.Append(xadesNamespace);
-                    }
-
-                    foreach (var attr in namespaces)
-                    {
-                        XmlAttribute attrNamespace = xmlDocument.CreateAttribute(attr.Key);
-                        attrNamespace.Value = attr.Value;
-                        xmlNode.Attributes.Append(attrNamespace);  
-                    }
-
-                    byte[] buffer = encoding.GetBytes(xmlNode.OuterXml);
-                    
-                    using (MemoryStream ms = new MemoryStream(buffer))
-                    {
-                        xmlDsigC14NTransform = new XmlDsigC14NTransform();
-                        xmlDsigC14NTransform.LoadInput(ms);
-                        MemoryStream canonicalizedStream = (MemoryStream)xmlDsigC14NTransform.GetOutput(typeof(Stream));
-                        canonicalizedStream.Flush();
-                        canonicalizedStream.WriteTo(msResult);                    
-                    }
-                }
+                return retVal;
             }
-
-            using (SHA1 sha1 = SHA1.Create())
-            {
-                retVal = sha1.ComputeHash(msResult.ToArray());
-            }
-
-            msResult.Dispose();
-
-            return retVal;
         }
     }
 }

@@ -56,12 +56,14 @@
             this.btnContraFirma = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
             this.cmbAlgoritmo = new System.Windows.Forms.ComboBox();
+            this.btnFirmarHuella = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnFirmar
             // 
-            this.btnFirmar.Location = new System.Drawing.Point(12, 418);
+            this.btnFirmar.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnFirmar.Location = new System.Drawing.Point(16, 418);
             this.btnFirmar.Name = "btnFirmar";
             this.btnFirmar.Size = new System.Drawing.Size(75, 23);
             this.btnFirmar.TabIndex = 0;
@@ -222,7 +224,7 @@
             // 
             // btnCoFirmar
             // 
-            this.btnCoFirmar.Location = new System.Drawing.Point(93, 418);
+            this.btnCoFirmar.Location = new System.Drawing.Point(97, 418);
             this.btnCoFirmar.Name = "btnCoFirmar";
             this.btnCoFirmar.Size = new System.Drawing.Size(75, 23);
             this.btnCoFirmar.TabIndex = 10;
@@ -284,7 +286,7 @@
             // 
             // btnContraFirma
             // 
-            this.btnContraFirma.Location = new System.Drawing.Point(93, 447);
+            this.btnContraFirma.Location = new System.Drawing.Point(97, 447);
             this.btnContraFirma.Name = "btnContraFirma";
             this.btnContraFirma.Size = new System.Drawing.Size(75, 23);
             this.btnContraFirma.TabIndex = 17;
@@ -313,11 +315,22 @@
             this.cmbAlgoritmo.Size = new System.Drawing.Size(108, 21);
             this.cmbAlgoritmo.TabIndex = 19;
             // 
+            // btnFirmarHuella
+            // 
+            this.btnFirmarHuella.Location = new System.Drawing.Point(16, 447);
+            this.btnFirmarHuella.Name = "btnFirmarHuella";
+            this.btnFirmarHuella.Size = new System.Drawing.Size(75, 23);
+            this.btnFirmarHuella.TabIndex = 20;
+            this.btnFirmarHuella.Text = "Firmar huella";
+            this.btnFirmarHuella.UseVisualStyleBackColor = true;
+            this.btnFirmarHuella.Click += new System.EventHandler(this.btnFirmarHuella_Click);
+            // 
             // FrmPrincipal
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(630, 481);
+            this.Controls.Add(this.btnFirmarHuella);
             this.Controls.Add(this.cmbAlgoritmo);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.btnContraFirma);
@@ -379,6 +392,7 @@
         private System.Windows.Forms.Button btnContraFirma;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.ComboBox cmbAlgoritmo;
+        private System.Windows.Forms.Button btnFirmarHuella;
     }
 }
 

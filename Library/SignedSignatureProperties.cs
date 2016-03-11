@@ -207,12 +207,11 @@ namespace Microsoft.Xades
 			this.signingCertificate.LoadXml((XmlElement)xmlNodeList.Item(0));
 
 			xmlNodeList = xmlElement.SelectNodes("xsd:SignaturePolicyIdentifier", xmlNamespaceManager);
-			if (xmlNodeList.Count == 0)
+			if (xmlNodeList.Count > 0)
 			{
-				throw new CryptographicException("SignaturePolicyIdentifier missing");
-			}
-			this.signaturePolicyIdentifier = new SignaturePolicyIdentifier();
-			this.signaturePolicyIdentifier.LoadXml((XmlElement)xmlNodeList.Item(0));
+                this.signaturePolicyIdentifier = new SignaturePolicyIdentifier();
+                this.signaturePolicyIdentifier.LoadXml((XmlElement)xmlNodeList.Item(0));
+            }
 
 			xmlNodeList = xmlElement.SelectNodes("xsd:SignatureProductionPlace", xmlNamespaceManager);
 			if (xmlNodeList.Count != 0)

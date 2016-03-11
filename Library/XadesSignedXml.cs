@@ -24,6 +24,7 @@ using System.Security.Cryptography.Xml;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Microsoft.Xades
 {
@@ -167,6 +168,7 @@ namespace Microsoft.Xades
         private string validationErrorDescription;
         private string signedInfoIdBuffer;
         private XmlDocument signatureDocument;
+        private XmlElement contentElement;
 
         #endregion
 
@@ -296,6 +298,19 @@ namespace Microsoft.Xades
                 }
             }
         }
+
+        public XmlElement ContentElement
+        {
+            get
+            {
+                return contentElement;
+            }
+
+            set
+            {
+                contentElement = value;
+            }
+        }
         #endregion
 
         #region Constructors
@@ -309,7 +324,7 @@ namespace Microsoft.Xades
             XmlXadesPrefix = "xades";
 
             this.cachedXadesObjectDocument = null;
-            this.signatureStandard = KnownSignatureStandard.XmlDsig;            
+            this.signatureStandard = KnownSignatureStandard.XmlDsig;
 
             CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
         }
@@ -1377,7 +1392,7 @@ namespace Microsoft.Xades
 
 
         public new void ComputeSignature()
-        {            
+        {
 
             this.BuildDigestedReferences();
 
@@ -1421,6 +1436,56 @@ namespace Microsoft.Xades
             this.m_signature.SignatureValue = description.CreateFormatter(signingKey).CreateSignature(hash);
         }
 
+
+        public void FindContentElement()
+        {
+            Reference contentRef = (Reference)this.SignedInfo.References[0];
+
+            if (!string.IsNullOrEmpty(contentRef.Uri) &&
+                contentRef.Uri.StartsWith("#"))
+            {
+                contentElement = GetIdElement(this.signatureDocument, contentRef.Uri.Substring(1));
+            }
+            else
+            {
+                contentElement = this.signatureDocument.DocumentElement;
+            }
+        }
+
+        public List<XmlAttribute> GetAllNamespaces(XmlElement fromElement)
+        {
+            List<XmlAttribute> namespaces = new List<XmlAttribute>();
+
+            if (fromElement.ParentNode.NodeType == XmlNodeType.Document)
+            {
+                foreach (XmlAttribute attr in fromElement.Attributes)
+                {
+                    if (attr.Name.StartsWith("xmlns"))
+                    {
+                        namespaces.Add(attr);
+                    }
+                }
+
+                return namespaces;
+            }
+
+            XmlNode currentNode = fromElement.ParentNode;
+
+            while (currentNode != null && currentNode.NodeType != XmlNodeType.Document)
+            {
+                foreach (XmlAttribute attr in currentNode.Attributes)
+                {
+                    if (attr.Name.StartsWith("xmlns"))
+                    {
+                        namespaces.Add(attr);
+                    }
+                }
+
+                currentNode = currentNode.ParentNode;
+            }
+
+            return namespaces;
+        }
 
         /// <summary>
         /// Copy of System.Security.Cryptography.Xml.SignedXml.BuildDigestedReferences() which will add a "ds" 
@@ -1491,11 +1556,16 @@ namespace Microsoft.Xades
 
             object m_containingDocument = SignedXml_m_containingDocument.GetValue(this);
 
+            if (contentElement == null)
+            {
+                FindContentElement();
+            }
+
             foreach (Reference reference2 in list2)
             {
                 if (reference2.DigestMethod == null)
                 {
-                    reference2.DigestMethod = "http://www.w3.org/2000/09/xmldsig#sha1";                    
+                    reference2.DigestMethod = "http://www.w3.org/2000/09/xmldsig#sha1";
                 }
 
                 if (reference2.Type != null && reference2.Type.IndexOf("/v1.3.2") > 0)
@@ -1503,11 +1573,10 @@ namespace Microsoft.Xades
                     reference2.Type = reference2.Type.Replace("/v1.3.2", "");
                 }
 
-                //reference2.UpdateHashValue(this.m_containingDocument, refList);
-                
+                var namespaces = GetAllNamespaces(this.contentElement);
+
                 if (reference2.Uri.StartsWith("#KeyInfoId-"))
                 {
-
                     XmlElement xml = this.KeyInfo.GetXml();
                     XmlDocument doc = new XmlDocument();
                     SetPrefix(XmlDSigPrefix, xml); // <---                   
@@ -1517,20 +1586,14 @@ namespace Microsoft.Xades
                     XmlAttribute xadesNamespace = doc.CreateAttribute("xmlns:xades");
                     xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
 
-                    doc.DocumentElement.Attributes.Append(xadesNamespace);
+                    doc.DocumentElement.Attributes.Append(xadesNamespace);                    
 
-                    if (m_containingDocument != null)
+                    foreach (XmlAttribute attr in namespaces)
                     {
-                        foreach (XmlAttribute attr in ((XmlDocument)m_containingDocument).DocumentElement.Attributes)
-                        {
-                            if (attr.Name.StartsWith("xmlns"))
-                            {
-                                XmlAttribute newAttr = doc.CreateAttribute(attr.Name);
-                                newAttr.Value = attr.Value;
+                        XmlAttribute newAttr = doc.CreateAttribute(attr.Name);
+                        newAttr.Value = attr.Value;
 
-                                doc.DocumentElement.Attributes.Append(newAttr);
-                            }
-                        }
+                        doc.DocumentElement.Attributes.Append(newAttr);
                     }
 
                     CanonicalXmlNodeList_Add.Invoke(refList, new object[] { doc.DocumentElement });
@@ -1553,20 +1616,13 @@ namespace Microsoft.Xades
 
                         element.Attributes.Append(xadesNamespace);
 
-                        if (m_containingDocument != null)
+                        foreach (XmlAttribute attr in namespaces)
                         {
-                            foreach (XmlAttribute attr in ((XmlDocument)m_containingDocument).DocumentElement.Attributes)
-                            {
-                                if (attr.Name.StartsWith("xmlns"))
-                                {
-                                    XmlAttribute newAttr = element.OwnerDocument.CreateAttribute(attr.Name);
-                                    newAttr.Value = attr.Value;
+                            XmlAttribute newAttr = element.OwnerDocument.CreateAttribute(attr.Name);
+                            newAttr.Value = attr.Value;
 
-                                    element.Attributes.Append(newAttr);
-                                }
-                            }
+                            element.Attributes.Append(newAttr);
                         }
-
 
                         xml += element.OuterXml;
                     }
@@ -1588,6 +1644,7 @@ namespace Microsoft.Xades
                 {
                     //refList.Add(reference2.GetXml());
                     XmlElement xml = reference2.GetXml();
+
                     SetPrefix(XmlDSigPrefix, xml); // <---
                     CanonicalXmlNodeList_Add.Invoke(refList, new object[] { xml });
                     //
@@ -1654,20 +1711,14 @@ namespace Microsoft.Xades
 
                 document.DocumentElement.Attributes.Append(xadesNamespace);
 
-                if (m_containingDocument != null)
+                var docNamespaces = GetAllNamespaces(this.contentElement);
+                foreach (XmlAttribute attr in docNamespaces)
                 {
-                    foreach (XmlAttribute attr in m_containingDocument.DocumentElement.Attributes)
-                    {
-                        if (attr.Name.Contains("xmlns"))
-                        {
-                            XmlAttribute newAttr = document.CreateAttribute(attr.Name);
-                            newAttr.Value = attr.Value;
+                    XmlAttribute newAttr = document.CreateAttribute(attr.Name);
+                    newAttr.Value = attr.Value;
 
-                            document.DocumentElement.Attributes.Append(newAttr);
-                        }
-                    }
+                    document.DocumentElement.Attributes.Append(newAttr);
                 }
-
 
                 //CanonicalXmlNodeList namespaces = (this.m_context == null) ? null : Utils.GetPropagatedAttributes(this.m_context);
                 FieldInfo SignedXml_m_context = SignedXml_Type.GetField("m_context", BindingFlags.NonPublic | BindingFlags.Instance);
