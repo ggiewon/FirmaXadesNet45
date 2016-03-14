@@ -502,15 +502,9 @@ namespace Microsoft.Xades
             // check to see if it's a standard ID reference
             XmlElement retVal = null;
 
-            if (idValue == this.signedPropertiesIdBuffer)
+            if (xmlDocument != null)
             {
-                //retVal = base.GetIdElement(this.cachedXadesObjectDocument, idValue);
-
-                var xmlDocumentCloned = new XmlDocument();
-                xmlDocumentCloned.LoadXml(xmlDocument.OuterXml);
-                xmlDocumentCloned.DocumentElement.AppendChild(xmlDocumentCloned.ImportNode(cachedXadesObjectDocument.DocumentElement, true));
-
-                retVal = base.GetIdElement(xmlDocumentCloned, idValue);
+                retVal = base.GetIdElement(xmlDocument, idValue);
 
                 if (retVal != null)
                 {
@@ -520,31 +514,10 @@ namespace Microsoft.Xades
                 // if not, search for custom ids
                 foreach (string idAttr in idAttrs)
                 {
-                    retVal = this.cachedXadesObjectDocument.SelectSingleNode("//*[@" + idAttr + "=\"" + idValue + "\"]") as XmlElement;
+                    retVal = xmlDocument.SelectSingleNode("//*[@" + idAttr + "=\"" + idValue + "\"]") as XmlElement;
                     if (retVal != null)
                     {
                         break;
-                    }
-                }
-            }
-            else
-            {
-                if (xmlDocument != null)
-                {
-                    retVal = base.GetIdElement(xmlDocument, idValue);
-                    if (retVal != null)
-                    {
-                        return retVal;
-                    }
-
-                    // if not, search for custom ids
-                    foreach (string idAttr in idAttrs)
-                    {
-                        retVal = xmlDocument.SelectSingleNode("//*[@" + idAttr + "=\"" + idValue + "\"]") as XmlElement;
-                        if (retVal != null)
-                        {
-                            break;
-                        }
                     }
                 }
             }
@@ -1507,7 +1480,7 @@ namespace Microsoft.Xades
             //
 
             //ReferenceLevelSortOrder comparer = new ReferenceLevelSortOrder();
-            Assembly System_Security_Assembly = Assembly.Load("System.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
+            Assembly System_Security_Assembly = Assembly.Load("System.Security, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
             Type ReferenceLevelSortOrder_Type = System_Security_Assembly.GetType("System.Security.Cryptography.Xml.SignedXml+ReferenceLevelSortOrder");
             ConstructorInfo ReferenceLevelSortOrder_Constructor = ReferenceLevelSortOrder_Type.GetConstructor(new Type[] { });
             Object comparer = ReferenceLevelSortOrder_Constructor.Invoke(null);
