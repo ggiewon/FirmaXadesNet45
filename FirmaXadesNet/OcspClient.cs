@@ -178,33 +178,34 @@ namespace FirmaXadesNet
             OcspResp r = new OcspResp(binaryResp);
             CertificateStatus cStatus = CertificateStatus.Unknown;
 
-            switch (r.Status)
+            if (r.Status == OcspRespStatus.Successful)
             {
-                case OcspRespStatus.Successful:
-                    BasicOcspResp or = (BasicOcspResp)r.GetResponseObject();
+                BasicOcspResp or = (BasicOcspResp)r.GetResponseObject();
 
-                    if (or.Responses.Length == 1)
+                if (or.Responses.Length == 1)
+                {
+                    SingleResp resp = or.Responses[0];
+
+                    object certificateStatus = resp.GetCertStatus();
+
+                    if (certificateStatus == Org.BouncyCastle.Ocsp.CertificateStatus.Good)
                     {
-                        SingleResp resp = or.Responses[0];                                            
-
-                        Object certificateStatus = resp.GetCertStatus();
-
-                        if (certificateStatus == Org.BouncyCastle.Ocsp.CertificateStatus.Good)
-                        {
-                            cStatus = CertificateStatus.Good;
-                        }
-                        else if (certificateStatus is Org.BouncyCastle.Ocsp.RevokedStatus)
-                        {
-                            cStatus = CertificateStatus.Revoked;
-                        }
-                        else if (certificateStatus is Org.BouncyCastle.Ocsp.UnknownStatus)
-                        {
-                            cStatus = CertificateStatus.Unknown;
-                        }
+                        cStatus = CertificateStatus.Good;
                     }
-                    break;
-                default:
-                    throw new Exception("Unknow status '" + r.Status + "'.");
+                    else if (certificateStatus is Org.BouncyCastle.Ocsp.RevokedStatus)
+                    {
+                        cStatus = CertificateStatus.Revoked;
+                    }
+                    else if (certificateStatus is Org.BouncyCastle.Ocsp.UnknownStatus)
+                    {
+                        cStatus = CertificateStatus.Unknown;
+                    }
+                }
+
+            }
+            else
+            {
+                throw new Exception("Unknow status '" + r.Status + "'.");
             }
 
             return cStatus;

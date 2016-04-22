@@ -58,7 +58,7 @@ namespace FirmaXadesNet
             xmlNamespaceManager.AddNamespace("ds", SignedXml.XmlDsigNamespaceUrl);
             xmlNamespaceManager.AddNamespace("xades", XadesSignedXml.XadesNamespaceUri);
 
-            var namespaces = xadesSignedXml.GetAllNamespaces(xadesSignedXml.ContentElement);
+            var namespaces = xadesSignedXml.GetAllNamespaces(xadesSignedXml.GetSignatureElement());            
 
             using (MemoryStream msResult = new MemoryStream())
             {

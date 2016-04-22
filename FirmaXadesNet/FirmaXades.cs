@@ -177,12 +177,10 @@ namespace FirmaXadesNet
 
                 if (value == TipoAlgoritmoFirma.FirmaSHA1)
                 {
-                    _algoritmoFirmaUrl = FirmaSHA1;
                     _algoritmoRefUrl = ReferenciaSHA1;
                 }
                 else
                 {
-                    _algoritmoFirmaUrl = FirmaSHA256;
                     _algoritmoRefUrl = ReferenciaSHA256;
                 }
             }
@@ -220,6 +218,39 @@ namespace FirmaXadesNet
 
         public FirmaXades()
         {
+        }
+
+
+        /// <summary>
+        /// Especifica el nodo en el cual se añadira la firma
+        /// </summary>
+        /// <param name="rutaXPath"></param>
+        /// <param name="namespaces"></param>
+        public void EstablecerNodoDestinoFirma(string rutaXPath, Dictionary<string, string> namespaces = null)
+        {
+            XmlNode nodo;
+
+            if (namespaces != null)
+            {
+                XmlNamespaceManager xmlnsMgr = new XmlNamespaceManager(_xmlDocument.NameTable);
+                foreach (var item in namespaces)
+                {
+                    xmlnsMgr.AddNamespace(item.Key, item.Value);
+                }
+
+                nodo = _xmlDocument.SelectSingleNode(rutaXPath, xmlnsMgr);
+            }
+            else
+            {
+                nodo = _xmlDocument.SelectSingleNode(rutaXPath);
+            }
+
+            if (nodo == null)
+            {
+                throw new Exception("No se ha encontrado el nodo de destino.");
+            }
+
+            _xadesSignedXml.SignatureNodeDestination = (XmlElement)nodo;
         }
 
         /// <summary>
@@ -496,16 +527,6 @@ namespace FirmaXadesNet
                 {
                     XmlElement xmlSigned = _xadesSignedXml.GetXml();
 
-                    var namespaces = _xadesSignedXml.GetAllNamespaces(_xadesSignedXml.ContentElement);
-
-                    foreach (XmlAttribute attr in namespaces)
-                    {
-                        XmlAttribute newAttr = xmlSigned.OwnerDocument.CreateAttribute(attr.Name);
-                        newAttr.Value = attr.Value;
-
-                        xmlSigned.Attributes.Append(newAttr);
-                    }
-
                     MemoryStream canonicalizedStream;
                     XmlDsigC14NTransform xmlDsigC14NTransform;
                     UTF8Encoding encoding = new UTF8Encoding(false);
@@ -525,14 +546,7 @@ namespace FirmaXadesNet
 
                     XmlNode canonSignature = _xmlDocument.ImportNode(doc.DocumentElement, true);
 
-                    if (_xadesSignedXml.ContentElement.ParentNode.NodeType != XmlNodeType.Document)
-                    {
-                        _xadesSignedXml.ContentElement.ParentNode.AppendChild(canonSignature);
-                    }
-                    else
-                    {
-                        _xadesSignedXml.ContentElement.AppendChild(canonSignature);
-                    }
+                    _xadesSignedXml.GetSignatureElement().AppendChild(canonSignature);
 
                     canonicalizedStream.Dispose();
                 }
@@ -548,6 +562,7 @@ namespace FirmaXadesNet
         /// </summary>
         public void Firmar(X509Certificate2 certificadoFirma, TipoAlgoritmoFirma? algoritmoFirma = null)
         {
+
             if (certificadoFirma == null)
             {
                 throw new Exception("Es necesario un certificado válido para la firma.");
@@ -556,6 +571,10 @@ namespace FirmaXadesNet
             if (algoritmoFirma.HasValue)
             {
                 this.AlgoritmoFirma = algoritmoFirma.Value;
+            }
+            else
+            {
+                this.AlgoritmoFirma = TipoAlgoritmoFirma.FirmaSHA256;
             }
 
             _signatureId = "Signature-" + Guid.NewGuid().ToString();
@@ -574,8 +593,6 @@ namespace FirmaXadesNet
                 throw new Exception("No se he podido verificar la cadena del certificado.");
             }
 
-            _xadesSignedXml.SignedInfo.SignatureMethod = _algoritmoFirmaUrl;
-
             InsertarInfoCertificado();
             InsertarInfoXades(_mimeType);
 
@@ -584,9 +601,12 @@ namespace FirmaXadesNet
                 reference.DigestMethod = _algoritmoRefUrl;
             }
 
+            _xadesSignedXml.SignedInfo.SignatureMethod = _algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1 ? FirmaSHA1 : FirmaSHA256;
+
             ComputarFirma();
 
             ActualizarDocumento();
+
         }
 
         /// <summary>
@@ -662,9 +682,7 @@ namespace FirmaXadesNet
 
             XadesSignedXml counterSignature = new XadesSignedXml(_xmlDocument);
 
-            RSACryptoServiceProvider rsaKey = ObtenerCryptoServiceProvider();
-
-            counterSignature.SigningKey = rsaKey;
+            counterSignature.SigningKey = _certificate.PrivateKey;
 
             Reference reference = new Reference();
             reference.Uri = "#" + _xadesSignedXml.SignatureValueId;
@@ -677,7 +695,7 @@ namespace FirmaXadesNet
             KeyInfo keyInfo = new KeyInfo();
             keyInfo.Id = "KeyInfoId-" + signatureId;
             keyInfo.AddClause(new KeyInfoX509Data((X509Certificate)certificadoFirma));
-            keyInfo.AddClause(new RSAKeyValue(rsaKey));
+            keyInfo.AddClause(new RSAKeyValue((RSA)_certificate.PrivateKey));
             counterSignature.KeyInfo = keyInfo;
 
             Reference referenceKeyInfo = new Reference();
@@ -738,14 +756,39 @@ namespace FirmaXadesNet
                 this.Documento.Save(writer);
             }
         }
-        
+
+        /// <summary>
+        /// Guarda la firma en el destino especificado
+        /// </summary>
+        /// <param name="destino"></param>
+        public void GuardarFirma(Stream destino)
+        {
+            this.Documento.Save(destino);
+        }
+
+
+        /// <summary>
+        /// Carga un archivo de firma.
+        /// </summary>
+        /// <param name="origen"></param>
+        /// <returns></returns>
+        public static FirmaXades[] CargarFirma(Stream origen)
+        {
+            XmlDocument documento = new XmlDocument();
+            documento.PreserveWhitespace = true;
+            documento.Load(origen);
+
+            return CargarFirma(documento);
+        }
+
+
         /// <summary>
         /// Carga un archivo de firma.
         /// </summary>
         /// <param name="nombreFichero"></param>
-        public static FirmaXades[] CargarFirma(XmlDocument document)
+        public static FirmaXades[] CargarFirma(XmlDocument documento)
         {
-            XmlNodeList signatureNodeList = document.GetElementsByTagName("Signature", SignedXml.XmlDsigNamespaceUrl);
+            XmlNodeList signatureNodeList = documento.GetElementsByTagName("Signature", SignedXml.XmlDsigNamespaceUrl);
 
             if (signatureNodeList.Count == 0)
             {
@@ -757,7 +800,7 @@ namespace FirmaXadesNet
             foreach (var signatureNode in signatureNodeList)
             {
                 FirmaXades firma = new FirmaXades();
-                firma._xmlDocument = document;
+                firma._xmlDocument = documento;
 
                 firma._xadesSignedXml = new XadesSignedXml(firma._xmlDocument);
                 firma._xadesSignedXml.LoadXml((XmlElement)signatureNode);
@@ -843,35 +886,15 @@ namespace FirmaXadesNet
             _xadesSignedXml.AddXadesObject(xadesObject);
         }
 
-        private RSACryptoServiceProvider ObtenerCryptoServiceProvider()
-        {
-            RSACryptoServiceProvider rsaKey;
-
-            if (_algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
-            {
-                rsaKey = (RSACryptoServiceProvider)_certificate.PrivateKey;
-            }
-            else
-            {
-                var key = (RSACryptoServiceProvider)_certificate.PrivateKey;
-                var enhCsp = new RSACryptoServiceProvider().CspKeyContainerInfo;
-                var cspparams = new CspParameters(enhCsp.ProviderType, enhCsp.ProviderName, key.CspKeyContainerInfo.KeyContainerName);
-                rsaKey = new RSACryptoServiceProvider(cspparams);
-            }
-
-            return rsaKey;
-        }
 
         private void InsertarInfoCertificado()
         {
-            RSACryptoServiceProvider rsaKey = ObtenerCryptoServiceProvider();
-
-            _xadesSignedXml.SigningKey = rsaKey;
+            _xadesSignedXml.SigningKey = _certificate.PrivateKey;
 
             KeyInfo keyInfo = new KeyInfo();
             keyInfo.Id = "KeyInfoId-" + _signatureId;
             keyInfo.AddClause(new KeyInfoX509Data((X509Certificate)_certificate));
-            keyInfo.AddClause(new RSAKeyValue(rsaKey));
+            keyInfo.AddClause(new RSAKeyValue((RSA)_certificate.PrivateKey));
 
             _xadesSignedXml.KeyInfo = keyInfo;
 

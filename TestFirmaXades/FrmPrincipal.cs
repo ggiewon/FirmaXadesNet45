@@ -33,6 +33,7 @@ using System.Windows.Forms;
 using FirmaXadesNet;
 using System.Security.Cryptography.X509Certificates;
 using System.Xml;
+using System.IO;
 
 namespace TestFirmaXades
 {
@@ -68,8 +69,7 @@ namespace TestFirmaXades
 
         private void btnFirmar_Click(object sender, EventArgs e)
         {
-
-            EstablecerPolitica();
+            
 
             if (string.IsNullOrEmpty(txtFichero.Text))
             {
@@ -84,6 +84,8 @@ namespace TestFirmaXades
                 string mimeType = "application/" + 
                     System.IO.Path.GetExtension(txtFichero.Text).ToLower().Replace(".", "");
 
+                EstablecerPolitica();
+
                 _firmaXades.InsertarFicheroInternallyDetached(txtFichero.Text, mimeType);                
             }
             else if (rbExternallyDetached.Checked)
@@ -95,9 +97,9 @@ namespace TestFirmaXades
                 _firmaXades.InsertarFicheroEnveloped(txtFichero.Text);
             }
 
-            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmoFirma tipoAlgoritmo = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
 
-            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoFirma);
+            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoAlgoritmo);
 
             MessageBox.Show("Firma completada, ahora puede Guardar la firma o ampliarla a Xades-T.", "Test firma XADES", 
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -173,21 +175,20 @@ namespace TestFirmaXades
         {
             if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                XmlDocument document = new XmlDocument();
-                document.PreserveWhitespace = true;
-                document.Load(openFileDialog1.FileName);
-                
-                var firmas = FirmaXades.CargarFirma(document);
-
-                FrmSeleccionarFirma frm = new FrmSeleccionarFirma(firmas);
-
-                if (frm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                using (FileStream fs = new FileStream(openFileDialog1.FileName, FileMode.Open))
                 {
-                    _firmaXades = frm.FirmaSeleccionada;
-                }
-                else
-                {
-                    MessageBox.Show("Debe seleccionar una firma.");
+                    var firmas = FirmaXades.CargarFirma(fs);
+
+                    FrmSeleccionarFirma frm = new FrmSeleccionarFirma(firmas);
+
+                    if (frm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        _firmaXades = frm.FirmaSeleccionada;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Debe seleccionar una firma.");
+                    }                
                 }                
             }            
         }
