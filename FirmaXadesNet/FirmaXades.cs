@@ -723,6 +723,7 @@ namespace FirmaXadesNet
                 signReference.DigestMethod = _algoritmoRefUrl;
             }
 
+            counterSignature.AddXadesNamespace = true;
             counterSignature.ComputeSignature();
 
             UnsignedProperties unsignedProperties = _xadesSignedXml.UnsignedProperties;
@@ -916,7 +917,7 @@ namespace FirmaXadesNet
             xmlDocument = new XmlDocument();
 
             cert = new Cert();
-            cert.IssuerSerial.X509IssuerName = NormalizarNombre(certificado.IssuerName.Name);
+            cert.IssuerSerial.X509IssuerName = certificado.IssuerName.Name; 
             cert.IssuerSerial.X509SerialNumber = HexToDecimal(certificado.SerialNumber);
 
             if (AlgoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
@@ -1026,23 +1027,6 @@ namespace FirmaXadesNet
 
         #region Xades-XL
 
-        private string NormalizarNombre(string name)
-        {
-            string[] tokens = name.Split(',');
-            string result = "";
-
-            foreach (var token in tokens)
-            {
-                if (!string.IsNullOrEmpty(result))
-                {
-                    result += ",";
-                }
-
-                result += token.Trim();
-            }
-
-            return result;
-        }
 
         private string InvertirEmisor(string issuer)
         {
@@ -1159,7 +1143,7 @@ namespace FirmaXadesNet
                 string guidCert = Guid.NewGuid().ToString();
 
                 Cert chainCert = new Cert();
-                chainCert.IssuerSerial.X509IssuerName = NormalizarNombre(cert.IssuerName.Name);
+                chainCert.IssuerSerial.X509IssuerName = cert.IssuerName.Name;
                 chainCert.IssuerSerial.X509SerialNumber = HexToDecimal(cert.SerialNumber);
 
                 if (_algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
@@ -1283,7 +1267,7 @@ namespace FirmaXadesNet
 
             if (!byKey)
             {
-                ocspRef.OCSPIdentifier.ResponderID = NormalizarNombre(name.ToString());
+                ocspRef.OCSPIdentifier.ResponderID = name.ToString(); 
 
                 if (!StartEqual(client.IssuerName.Name, ocspRef.OCSPIdentifier.ResponderID))
                 {

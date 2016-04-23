@@ -170,6 +170,7 @@ namespace Microsoft.Xades
         private XmlDocument signatureDocument;
         private XmlElement contentElement;
         private XmlElement signatureNodeDestination;
+        private bool addXadesNamespace;
 
         #endregion
 
@@ -326,6 +327,18 @@ namespace Microsoft.Xades
             }
         }
 
+        public bool AddXadesNamespace
+        {
+            get
+            {
+                return this.addXadesNamespace;
+            }
+
+            set
+            {
+                this.addXadesNamespace = value;
+            }
+        }
 
         #endregion
 
@@ -488,8 +501,6 @@ namespace Microsoft.Xades
                     nodeSignedInfo.InnerXml = nodeSignedInfoOrig[0].InnerXml;
                 }
             }*/
-
-            retVal.SetAttribute("xmlns:" + XmlXadesPrefix, XadesSignedXml.XadesNamespaceUri);
 
             if (this.signatureValueId != null && this.signatureValueId != "")
             { //Id on Signature value is needed for XAdES-T. We inject it here.
@@ -1575,6 +1586,8 @@ namespace Microsoft.Xades
                 FindContentElement();
             }
 
+            var signatureParentNodeNameSpaces = GetAllNamespaces(GetSignatureElement());
+
             foreach (Reference reference2 in list2)
             {
                 if (reference2.DigestMethod == null)
@@ -1585,9 +1598,15 @@ namespace Microsoft.Xades
                 if (reference2.Type != null && reference2.Type.IndexOf("/v1.3.2") > 0)
                 {
                     reference2.Type = reference2.Type.Replace("/v1.3.2", "");
-                }
+                }                
 
-                var signatureParentNodeNameSpaces = GetAllNamespaces(GetSignatureElement());
+                if (addXadesNamespace)
+                {
+                    var attr = signatureDocument.CreateAttribute("xmlns:xades");
+                    attr.Value = XadesSignedXml.XadesNamespaceUri;
+
+                    signatureParentNodeNameSpaces.Add(attr);
+                }
 
                 if (reference2.Uri.StartsWith("#KeyInfoId-"))
                 {
@@ -1596,11 +1615,6 @@ namespace Microsoft.Xades
                     SetPrefix(XmlDSigPrefix, xml); // <---                   
 
                     doc.LoadXml(xml.OuterXml);
-
-                    XmlAttribute xadesNamespace = doc.CreateAttribute("xmlns:xades");
-                    xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
-
-                    doc.DocumentElement.Attributes.Append(xadesNamespace);
 
                     foreach (XmlAttribute attr in signatureParentNodeNameSpaces)
                     {
@@ -1719,12 +1733,18 @@ namespace Microsoft.Xades
                 SetPrefix(prefix, xml); // <---
 
                 XmlDocument document = (XmlDocument)Utils_PreProcessElementInput.Invoke(null, new object[] { xml, xmlResolver, securityUrl });
-                XmlAttribute xadesNamespace = document.CreateAttribute("xmlns:xades");
-                xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
-
-                document.DocumentElement.Attributes.Append(xadesNamespace);
 
                 var docNamespaces = GetAllNamespaces(GetSignatureElement());
+
+                if (addXadesNamespace)
+                {
+                    var attr = signatureDocument.CreateAttribute("xmlns:xades");
+                    attr.Value = XadesSignedXml.XadesNamespaceUri;
+
+                    docNamespaces.Add(attr);
+                }
+
+
                 foreach (XmlAttribute attr in docNamespaces)
                 {
                     XmlAttribute newAttr = document.CreateAttribute(attr.Name);

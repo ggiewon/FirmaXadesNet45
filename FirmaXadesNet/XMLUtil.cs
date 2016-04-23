@@ -73,13 +73,7 @@ namespace FirmaXadesNet
 
                     foreach (XmlNode xmlNode in searchXmlNodeList)
                     {
-                        if (xmlNode.Name == "ds:SignatureValue")
-                        {
-                            XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlXadesPrefix);
-                            xadesNamespace.Value = XadesSignedXml.XadesNamespaceUri;
-                            xmlNode.Attributes.Append(xadesNamespace);
-                        }
-                        else
+                        if (xmlNode.Name != "ds:SignatureValue") 
                         {
                             XmlAttribute xadesNamespace = xmlDocument.CreateAttribute("xmlns:" + XadesSignedXml.XmlDSigPrefix);
                             xadesNamespace.Value = XadesSignedXml.XmlDsigNamespaceUrl;
