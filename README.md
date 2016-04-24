@@ -19,7 +19,7 @@ CARACTERÍSTICAS
 
 - Soporte para co-firmas y contrafirmas.
 
-- Soporte para algoritmos SHA1 y SHA256.
+- Soporte para algoritmos SHA1, SHA256 y SHA512.
 
 Adicionalmente permite cargar archivos de firma para su posterior ampliación a XADES-T o XADES-XL, con esta funcionalidad podremos hacer que nuestra aplicación de escritorio permita al usuario firmar con su certificado, y posteriormente podemos ampliar dicha firma mediante un servicio web en ASP.NET.
 
