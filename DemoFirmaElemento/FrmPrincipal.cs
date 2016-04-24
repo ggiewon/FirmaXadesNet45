@@ -36,7 +36,7 @@ namespace DemoFirmaElemento
 
             firmaXades.EstablecerNodoDestinoFirma("enidoc:documento/enids:firmas/enids:firma/enids:ContenidoFirma/enids:FirmaConCertificado", namespaces);
 
-            firmaXades.Firmar(firmaXades.SeleccionarCertificado(), TipoAlgoritmoFirma.FirmaSHA256);
+            firmaXades.Firmar(firmaXades.SeleccionarCertificado());
 
             if (saveFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {

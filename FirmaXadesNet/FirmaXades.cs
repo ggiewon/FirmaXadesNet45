@@ -44,21 +44,24 @@ using Org.BouncyCastle.X509.Store;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Asn1.Cmp;
+using System.Reflection;
 
 namespace FirmaXadesNet
 {
-    public enum TipoAlgoritmoFirma
+    public enum TipoAlgoritmo
     {
-        FirmaSHA1 = 0,
-        FirmaSHA256 = 1
+        SHA1 = 0,
+        SHA256 = 1,
+        SHA512 = 2
     }
 
-    public class FirmaXades
+    public class FirmaXades : IDisposable
     {
         private X509Certificate2 _certificate;
         private X509Chain _chain;
         private XadesSignedXml _xadesSignedXml;
         private XmlDocument _xmlDocument;
+        private RSACryptoServiceProvider _rsaKey;
         private string _mimeType;
         private string _signatureId;
         private string _signatureValueId;
@@ -68,17 +71,26 @@ namespace FirmaXadesNet
         private string _policyHash;
         private string _tsaServer;
         private string _ocspServer;
-        private TipoAlgoritmoFirma _algoritmoFirma;
+        
+        private TipoAlgoritmo _algoritmoFirma;
+        private TipoAlgoritmo _algoritmoReferencias;
+
         private string _algoritmoFirmaUrl;
         private string _algoritmoRefUrl;
+
+        private bool _liberarCryptoProvider;
 
         private List<string> _certificatesChecked;
 
         private const string ReferenciaSHA1 = "http://www.w3.org/2000/09/xmldsig#sha1";
         private const string ReferenciaSHA256 = "http://www.w3.org/2001/04/xmlenc#sha256";
+        private const string ReferenciaSHA512 = "http://www.w3.org/2001/04/xmlenc#sha512";
+
 
         private const string FirmaSHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
         private const string FirmaSHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+        private const string FirmaSHA512 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512";
+
 
         /// <summary>
         /// Establece la URL del servidor para el sellado de tiempo.
@@ -163,9 +175,9 @@ namespace FirmaXadesNet
         }
 
         /// <summary>
-        /// Tipo de algoritmo de firma. (SHA1 o SHA256)
+        /// Tipo de algoritmo para la huella de la firma
         /// </summary>
-        public TipoAlgoritmoFirma AlgoritmoFirma
+        public TipoAlgoritmo AlgoritmoFirma
         {
             get
             {
@@ -175,13 +187,50 @@ namespace FirmaXadesNet
             {
                 _algoritmoFirma = value;
 
-                if (value == TipoAlgoritmoFirma.FirmaSHA1)
+                switch (_algoritmoFirma)
                 {
-                    _algoritmoRefUrl = ReferenciaSHA1;
+                    case TipoAlgoritmo.SHA1:
+                        _algoritmoFirmaUrl = FirmaSHA1;
+                        break;
+
+                    case TipoAlgoritmo.SHA256:
+                        _algoritmoFirmaUrl = FirmaSHA256;
+                        break;
+
+                    case TipoAlgoritmo.SHA512:
+                        _algoritmoFirmaUrl = FirmaSHA512;
+                        break;
                 }
-                else
+            }
+        }
+
+        /// <summary>
+        /// Tipo de algoritmo para la huella de las referencias
+        /// </summary>
+        public TipoAlgoritmo AlgoritmoReferencias
+        {
+            get
+            {
+                return _algoritmoReferencias;
+            }
+
+            set
+            {
+                _algoritmoReferencias = value;
+
+                switch (_algoritmoReferencias)
                 {
-                    _algoritmoRefUrl = ReferenciaSHA256;
+                    case TipoAlgoritmo.SHA1:
+                        _algoritmoRefUrl = ReferenciaSHA1;
+                        break;
+
+                    case TipoAlgoritmo.SHA256:
+                        _algoritmoRefUrl = ReferenciaSHA256;
+                        break;
+
+                    case TipoAlgoritmo.SHA512:
+                        _algoritmoRefUrl = ReferenciaSHA512;
+                        break;
                 }
             }
         }
@@ -218,6 +267,8 @@ namespace FirmaXadesNet
 
         public FirmaXades()
         {
+            this.AlgoritmoFirma = TipoAlgoritmo.SHA512;
+            this.AlgoritmoReferencias = TipoAlgoritmo.SHA512;
         }
 
 
@@ -560,9 +611,8 @@ namespace FirmaXadesNet
         /// <summary>
         /// Realiza el proceso de firmado
         /// </summary>
-        public void Firmar(X509Certificate2 certificadoFirma, TipoAlgoritmoFirma? algoritmoFirma = null)
+        public void Firmar(X509Certificate2 certificadoFirma, TipoAlgoritmo? algoritmoFirma = null)
         {
-
             if (certificadoFirma == null)
             {
                 throw new Exception("Es necesario un certificado válido para la firma.");
@@ -571,10 +621,6 @@ namespace FirmaXadesNet
             if (algoritmoFirma.HasValue)
             {
                 this.AlgoritmoFirma = algoritmoFirma.Value;
-            }
-            else
-            {
-                this.AlgoritmoFirma = TipoAlgoritmoFirma.FirmaSHA256;
             }
 
             _signatureId = "Signature-" + Guid.NewGuid().ToString();
@@ -601,7 +647,7 @@ namespace FirmaXadesNet
                 reference.DigestMethod = _algoritmoRefUrl;
             }
 
-            _xadesSignedXml.SignedInfo.SignatureMethod = _algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1 ? FirmaSHA1 : FirmaSHA256;
+            _xadesSignedXml.SignedInfo.SignatureMethod = _algoritmoFirmaUrl;
 
             ComputarFirma();
 
@@ -613,7 +659,7 @@ namespace FirmaXadesNet
         /// Añade una firma al documento
         /// </summary>
         /// <param name="certificadoFirma"></param>
-        public void CoFirmar(X509Certificate2 certificadoFirma, TipoAlgoritmoFirma? algoritmoFirma = null)
+        public void CoFirmar(X509Certificate2 certificadoFirma, TipoAlgoritmo? algoritmoFirma = null)
         {
             if (_xadesSignedXml == null)
             {
@@ -659,7 +705,7 @@ namespace FirmaXadesNet
         /// Realiza la contrafirma de la firma actualmente cargada
         /// </summary>
         /// <param name="certificadoFirma"></param>
-        public void ContraFirma(X509Certificate2 certificadoFirma, TipoAlgoritmoFirma? algoritmoFirma = null)
+        public void ContraFirma(X509Certificate2 certificadoFirma, TipoAlgoritmo? algoritmoFirma = null)
         {
             string signatureId = "Signature-" + Guid.NewGuid().ToString();
 
@@ -682,7 +728,9 @@ namespace FirmaXadesNet
 
             XadesSignedXml counterSignature = new XadesSignedXml(_xmlDocument);
 
-            counterSignature.SigningKey = _certificate.PrivateKey;
+            ObtenerCryptoServiceProvider();
+
+            counterSignature.SigningKey = _rsaKey;
 
             Reference reference = new Reference();
             reference.Uri = "#" + _xadesSignedXml.SignatureValueId;
@@ -695,7 +743,7 @@ namespace FirmaXadesNet
             KeyInfo keyInfo = new KeyInfo();
             keyInfo.Id = "KeyInfoId-" + signatureId;
             keyInfo.AddClause(new KeyInfoX509Data((X509Certificate)certificadoFirma));
-            keyInfo.AddClause(new RSAKeyValue((RSA)_certificate.PrivateKey));
+            keyInfo.AddClause(new RSAKeyValue((RSA)_rsaKey));
             counterSignature.KeyInfo = keyInfo;
 
             Reference referenceKeyInfo = new Reference();
@@ -742,6 +790,7 @@ namespace FirmaXadesNet
 
             _chain = new X509Chain();
             _chain.Build(_certificate);
+
         }
 
         /// <summary>
@@ -808,12 +857,17 @@ namespace FirmaXadesNet
 
                 if (firma._xadesSignedXml.SignedInfo.SignatureMethod == FirmaSHA1)
                 {
-                    firma.AlgoritmoFirma = TipoAlgoritmoFirma.FirmaSHA1;
+                    firma.AlgoritmoFirma = TipoAlgoritmo.SHA1;
                 }
                 else if (firma._xadesSignedXml.SignedInfo.SignatureMethod == FirmaSHA256)
                 {
-                    firma.AlgoritmoFirma = TipoAlgoritmoFirma.FirmaSHA256;
+                    firma.AlgoritmoFirma = TipoAlgoritmo.SHA256;
                 }
+                else if (firma._xadesSignedXml.SignedInfo.SignatureMethod == FirmaSHA512)
+                {
+                    firma.AlgoritmoFirma = TipoAlgoritmo.SHA512;
+                }
+                
 
                 XmlNode keyXml = firma._xadesSignedXml.KeyInfo.GetXml().GetElementsByTagName("X509Data", SignedXml.XmlDsigNamespaceUrl)[0];
 
@@ -888,14 +942,50 @@ namespace FirmaXadesNet
         }
 
 
+        private void ObtenerCryptoServiceProvider()
+        {
+            string providerName = "Microsoft Enhanced RSA and AES Cryptographic Provider";
+            int providerType = 24;
+
+            var key = (RSACryptoServiceProvider)_certificate.PrivateKey;
+
+            if (_rsaKey != null &&
+                key.CspKeyContainerInfo.UniqueKeyContainerName == _rsaKey.CspKeyContainerInfo.UniqueKeyContainerName)
+                return;
+            
+            if (key.CspKeyContainerInfo.ProviderName == "Microsoft Strong Cryptographic Provider" ||
+                key.CspKeyContainerInfo.ProviderName == "Microsoft Enhanced Cryptographic Provider v1.0" ||
+                key.CspKeyContainerInfo.ProviderName == "Microsoft Base Cryptographic Provider v1.0")
+            {
+                Type CspKeyContainerInfo_Type = typeof(CspKeyContainerInfo);
+
+                FieldInfo CspKeyContainerInfo_m_parameters = CspKeyContainerInfo_Type.GetField("m_parameters", BindingFlags.NonPublic | BindingFlags.Instance);
+                CspParameters parameters = (CspParameters)CspKeyContainerInfo_m_parameters.GetValue(key.CspKeyContainerInfo);
+
+                var cspparams = new CspParameters(providerType, providerName, key.CspKeyContainerInfo.KeyContainerName);
+                cspparams.Flags = parameters.Flags;
+                _rsaKey = new RSACryptoServiceProvider(cspparams);
+
+                _liberarCryptoProvider = true;
+            }
+            else
+            {
+                _rsaKey = key;
+                _liberarCryptoProvider = false;
+            }
+        }
+
+
         private void InsertarInfoCertificado()
         {
-            _xadesSignedXml.SigningKey = _certificate.PrivateKey;
+            ObtenerCryptoServiceProvider();
+
+            _xadesSignedXml.SigningKey = _rsaKey;
 
             KeyInfo keyInfo = new KeyInfo();
             keyInfo.Id = "KeyInfoId-" + _signatureId;
             keyInfo.AddClause(new KeyInfoX509Data((X509Certificate)_certificate));
-            keyInfo.AddClause(new RSAKeyValue((RSA)_certificate.PrivateKey));
+            keyInfo.AddClause(new RSAKeyValue((RSA)_rsaKey));
 
             _xadesSignedXml.KeyInfo = keyInfo;
 
@@ -907,6 +997,21 @@ namespace FirmaXadesNet
             _xadesSignedXml.AddReference(reference);
         }
 
+        private HashAlgorithm ObtenerAlgoritmoHuella(TipoAlgoritmo tipo)
+        {
+            if (tipo == TipoAlgoritmo.SHA1)
+            {
+                return SHA1.Create();
+            }
+            else if (tipo == TipoAlgoritmo.SHA256)
+            {
+                return SHA256.Create();
+            }
+            else
+            {
+                return SHA512.Create();
+            }
+        }
 
         private void InsertarPropiedadesFirma(SignedSignatureProperties signedSignatureProperties, SignedDataObjectProperties signedDataObjectProperties,
                    UnsignedSignatureProperties unsignedSignatureProperties, string mimeType, X509Certificate2 certificado)
@@ -917,21 +1022,13 @@ namespace FirmaXadesNet
             xmlDocument = new XmlDocument();
 
             cert = new Cert();
-            cert.IssuerSerial.X509IssuerName = certificado.IssuerName.Name; 
+            cert.IssuerSerial.X509IssuerName = certificado.IssuerName.Name;
             cert.IssuerSerial.X509SerialNumber = HexToDecimal(certificado.SerialNumber);
 
-            if (AlgoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
-            {
-                cert.CertDigest.DigestMethod.Algorithm = SignedXml.XmlDsigSHA1Url;
-                cert.CertDigest.DigestValue = certificado.GetCertHash();
-            }
-            else
+            using (var alg = ObtenerAlgoritmoHuella(_algoritmoReferencias))
             {
                 cert.CertDigest.DigestMethod.Algorithm = _algoritmoRefUrl;
-                using (SHA256 shaManaged = SHA256.Create())
-                {
-                    cert.CertDigest.DigestValue = shaManaged.ComputeHash(certificado.GetRawCertData());
-                }
+                cert.CertDigest.DigestValue = alg.ComputeHash(certificado.GetRawCertData());
             }
 
             signedSignatureProperties.SigningCertificate.CertCollection.Add(cert);
@@ -1146,19 +1243,12 @@ namespace FirmaXadesNet
                 chainCert.IssuerSerial.X509IssuerName = cert.IssuerName.Name;
                 chainCert.IssuerSerial.X509SerialNumber = HexToDecimal(cert.SerialNumber);
 
-                if (_algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
+                using (var alg = ObtenerAlgoritmoHuella(_algoritmoReferencias))
                 {
-                    chainCert.CertDigest.DigestMethod.Algorithm = SignedXml.XmlDsigSHA1Url;
-                    chainCert.CertDigest.DigestValue = cert.GetCertHash();
+                    chainCert.CertDigest.DigestMethod.Algorithm = _algoritmoRefUrl;
+                    chainCert.CertDigest.DigestValue = alg.ComputeHash(cert.GetRawCertData());
                 }
-                else
-                {
-                    using (SHA256 sha256 = SHA256.Create())
-                    {
-                        chainCert.CertDigest.DigestMethod.Algorithm = ReferenciaSHA256;
-                        chainCert.CertDigest.DigestValue = sha256.ComputeHash(cert.GetRawCertData());
-                    }
-                }
+                
                 chainCert.URI = "#Cert" + guidCert;
                 unsignedProperties.UnsignedSignatureProperties.CompleteCertificateRefs.CertRefs.CertCollection.Add(chainCert);
 
@@ -1244,30 +1334,18 @@ namespace FirmaXadesNet
             OCSPRef ocspRef = new OCSPRef();
             ocspRef.OCSPIdentifier.UriAttribute = "#OcspValue" + guidOcsp;
 
-            if (_algoritmoFirma == TipoAlgoritmoFirma.FirmaSHA1)
+            using (var alg = ObtenerAlgoritmoHuella(_algoritmoReferencias))
             {
-                using (SHA1 sha1 = SHA1.Create())
-                {
-                    ocspRef.CertDigest.DigestMethod.Algorithm = SignedXml.XmlDsigSHA1Url;
-                    ocspRef.CertDigest.DigestValue = sha1.ComputeHash(rEncoded, 0, rEncoded.Length);
-                }
+                ocspRef.CertDigest.DigestMethod.Algorithm = _algoritmoRefUrl;
+                ocspRef.CertDigest.DigestValue = alg.ComputeHash(rEncoded, 0, rEncoded.Length);
             }
-            else
-            {
-                using (SHA256 sha256 = SHA256.Create())
-                {
-                    ocspRef.CertDigest.DigestMethod.Algorithm = ReferenciaSHA256;
-                    ocspRef.CertDigest.DigestValue = sha256.ComputeHash(rEncoded, 0, rEncoded.Length);
-                }
-            }
-
 
             Org.BouncyCastle.Asn1.Ocsp.ResponderID rpId = or.ResponderId.ToAsn1Object();
             string name = ObtenerResponderName(rpId, ref byKey);
 
             if (!byKey)
             {
-                ocspRef.OCSPIdentifier.ResponderID = name.ToString(); 
+                ocspRef.OCSPIdentifier.ResponderID = name.ToString();
 
                 if (!StartEqual(client.IssuerName.Name, ocspRef.OCSPIdentifier.ResponderID))
                 {
@@ -1426,5 +1504,13 @@ namespace FirmaXadesNet
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            if (_liberarCryptoProvider && _rsaKey != null)
+            {
+                _rsaKey.Dispose();
+            }
+        }
     }
 }

@@ -301,6 +301,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="RSAPKCS1SHA256SignatureDescription.cs" />
+    <Compile Include="RSAPKCS1SHA512SignatureDescription.cs" />
     <Compile Include="SignaturePolicyId.cs">
       <SubType>Code</SubType>
     </Compile>

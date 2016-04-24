@@ -60,6 +60,7 @@
     <Compile Include="FrmSeleccionarFirma.Designer.cs">
       <DependentUpon>FrmSeleccionarFirma.cs</DependentUpon>
     </Compile>
+    <Compile Include="MimeTypeInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="FrmPrincipal.resx">

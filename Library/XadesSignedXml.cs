@@ -354,8 +354,6 @@ namespace Microsoft.Xades
 
             this.cachedXadesObjectDocument = null;
             this.signatureStandard = KnownSignatureStandard.XmlDsig;
-
-            CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
         }
 
         /// <summary>
@@ -369,8 +367,6 @@ namespace Microsoft.Xades
             XmlXadesPrefix = "xades";
 
             this.cachedXadesObjectDocument = null;
-
-            CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
         }
 
         /// <summary>
@@ -385,9 +381,6 @@ namespace Microsoft.Xades
             this.signatureDocument = signatureDocument;
 
             this.cachedXadesObjectDocument = null;
-
-            CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
-
         }
         #endregion
 
@@ -1423,8 +1416,21 @@ namespace Microsoft.Xades
             SignatureDescription description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
             if (description == null)
             {
-                throw new CryptographicException("Cryptography_Xml_SignatureDescriptionNotCreated");
+                if (this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" ||
+                    this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512")
+                {
+                    CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
+                    CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA512SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512");
+                }
+
+                description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
+
+                if (description == null)
+                {
+                    throw new CryptographicException("Cryptography_Xml_SignatureDescriptionNotCreated");
+                }                
             }
+
             HashAlgorithm hash = description.CreateDigest();
             if (hash == null)
             {

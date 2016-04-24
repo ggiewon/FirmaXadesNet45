@@ -40,7 +40,7 @@ namespace TestFirmaXades
     public partial class FrmPrincipal : Form
     {
         FirmaXades _firmaXades = new FirmaXades();
-        
+
         public FrmPrincipal()
         {
             InitializeComponent();
@@ -51,7 +51,7 @@ namespace TestFirmaXades
             cmbAlgoritmo.SelectedIndex = 0;
         }
 
-        
+
         private void btnSeleccionarFichero_Click(object sender, EventArgs e)
         {
             if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
@@ -67,26 +67,41 @@ namespace TestFirmaXades
             _firmaXades.PolicyUri = txtURIPolitica.Text;
         }
 
+        private TipoAlgoritmo ObtenerAlgoritmo()
+        {
+            if (cmbAlgoritmo.SelectedIndex == 0)
+            {
+                return TipoAlgoritmo.SHA1;
+            }
+            else if (cmbAlgoritmo.SelectedIndex == 1)
+            {
+                return TipoAlgoritmo.SHA256;
+            }
+            else
+            {
+                return TipoAlgoritmo.SHA512;
+            }
+
+        }
+
         private void btnFirmar_Click(object sender, EventArgs e)
         {
-            
+
 
             if (string.IsNullOrEmpty(txtFichero.Text))
             {
                 MessageBox.Show("Debe seleccionar un fichero para firmar.");
                 return;
             }
-            
+
             if (rbInternnallyDetached.Checked)
             {
-                // TODO: gestionar correctamente los tipos MIME
-                
-                string mimeType = "application/" + 
-                    System.IO.Path.GetExtension(txtFichero.Text).ToLower().Replace(".", "");
+
+                string mimeType = MimeTypeInfo.GetMimeType(txtFichero.Text);
 
                 EstablecerPolitica();
 
-                _firmaXades.InsertarFicheroInternallyDetached(txtFichero.Text, mimeType);                
+                _firmaXades.InsertarFicheroInternallyDetached(txtFichero.Text, mimeType);
             }
             else if (rbExternallyDetached.Checked)
             {
@@ -97,11 +112,12 @@ namespace TestFirmaXades
                 _firmaXades.InsertarFicheroEnveloped(txtFichero.Text);
             }
 
-            TipoAlgoritmoFirma tipoAlgoritmo = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmo tipoAlgoritmo = ObtenerAlgoritmo();
 
+            _firmaXades.AlgoritmoReferencias = tipoAlgoritmo;
             _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoAlgoritmo);
 
-            MessageBox.Show("Firma completada, ahora puede Guardar la firma o ampliarla a Xades-T.", "Test firma XADES", 
+            MessageBox.Show("Firma completada, ahora puede Guardar la firma o ampliarla a Xades-T.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -110,9 +126,10 @@ namespace TestFirmaXades
         {
             EstablecerPolitica();
 
-            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmo tipoAlgoritmo = ObtenerAlgoritmo();
 
-            _firmaXades.CoFirmar(_firmaXades.SeleccionarCertificado(), tipoFirma);
+            _firmaXades.AlgoritmoReferencias = tipoAlgoritmo;
+            _firmaXades.CoFirmar(_firmaXades.SeleccionarCertificado(), tipoAlgoritmo);
 
             MessageBox.Show("Firma completada correctamente.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -126,7 +143,7 @@ namespace TestFirmaXades
 
                 _firmaXades.AmpliarAXadesT();
 
-                MessageBox.Show("Sello de tiempo aplicado correctamente.\nAhora puede Guardar la firma o ampliarla a Xades-XL", "Test firma XADES", 
+                MessageBox.Show("Sello de tiempo aplicado correctamente.\nAhora puede Guardar la firma o ampliarla a Xades-XL", "Test firma XADES",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -140,14 +157,14 @@ namespace TestFirmaXades
             try
             {
                 _firmaXades.URLServidorTSA = txtURLSellado.Text;
-                
+
                 // Se asigna el OCSP por defecto en caso de que el certificado emisor
                 // no tenga una URL de validación
                 _firmaXades.ServidorOCSP = txtOCSP.Text;
 
                 _firmaXades.AmpliarAXadesXL();
 
-                MessageBox.Show("Firma ampliada correctamente a XADES-XL.", "Test firma XADES", 
+                MessageBox.Show("Firma ampliada correctamente a XADES-XL.", "Test firma XADES",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -188,9 +205,9 @@ namespace TestFirmaXades
                     else
                     {
                         MessageBox.Show("Debe seleccionar una firma.");
-                    }                
-                }                
-            }            
+                    }
+                }
+            }
         }
 
 
@@ -198,9 +215,10 @@ namespace TestFirmaXades
         {
             EstablecerPolitica();
 
-            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmo tipoAlgoritmo = ObtenerAlgoritmo();
 
-            _firmaXades.ContraFirma(_firmaXades.SeleccionarCertificado(), tipoFirma);
+            _firmaXades.AlgoritmoReferencias = tipoAlgoritmo;
+            _firmaXades.ContraFirma(_firmaXades.SeleccionarCertificado(), tipoAlgoritmo);
 
             MessageBox.Show("Firma completada correctamente.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -224,9 +242,10 @@ namespace TestFirmaXades
 
             _firmaXades.InsertarFicheroInternallyDetached(txtFichero.Text, "hash/sha256");
 
-            TipoAlgoritmoFirma tipoFirma = cmbAlgoritmo.SelectedIndex == 0 ? TipoAlgoritmoFirma.FirmaSHA1 : TipoAlgoritmoFirma.FirmaSHA256;
+            TipoAlgoritmo tipoAlgoritmo = ObtenerAlgoritmo();
 
-            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoFirma);
+            _firmaXades.AlgoritmoReferencias = tipoAlgoritmo;
+            _firmaXades.Firmar(_firmaXades.SeleccionarCertificado(), tipoAlgoritmo);
 
             MessageBox.Show("Firma completada, ahora puede Guardar la firma o ampliarla a Xades-T.", "Test firma XADES",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
