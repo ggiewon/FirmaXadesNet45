@@ -43,8 +43,7 @@ namespace FirmaXadesNet
         /// <param name="signatureXmlElement"></param>
         /// <param name="elementXpaths"></param>
         /// <returns></returns>
-        public static byte[] ComputeHashValueOfElementList(XmlElement signatureXmlElement, ArrayList elementXpaths,
-            XadesSignedXml xadesSignedXml)
+        public static byte[] ComputeHashValueOfElementList(XadesSignedXml xadesSignedXml, ArrayList elementXpaths)
         {
             XmlDocument xmlDocument;
             XmlNamespaceManager xmlNamespaceManager;
@@ -53,12 +52,13 @@ namespace FirmaXadesNet
             byte[] retVal;
             UTF8Encoding encoding = new UTF8Encoding(false);
 
+            var signatureXmlElement = xadesSignedXml.GetSignatureElement();
+            var namespaces = xadesSignedXml.GetAllNamespaces(signatureXmlElement);
+
             xmlDocument = signatureXmlElement.OwnerDocument;
             xmlNamespaceManager = new XmlNamespaceManager(xmlDocument.NameTable);
             xmlNamespaceManager.AddNamespace("ds", SignedXml.XmlDsigNamespaceUrl);
             xmlNamespaceManager.AddNamespace("xades", XadesSignedXml.XadesNamespaceUri);
-
-            var namespaces = xadesSignedXml.GetAllNamespaces(xadesSignedXml.GetSignatureElement());            
 
             using (MemoryStream msResult = new MemoryStream())
             {

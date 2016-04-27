@@ -867,12 +867,11 @@ namespace FirmaXadesNet
                 {
                     firma.AlgoritmoFirma = TipoAlgoritmo.SHA512;
                 }
+
+                XmlNode keyXml = firma._xadesSignedXml.KeyInfo.GetXml().GetElementsByTagName("X509Certificate", SignedXml.XmlDsigNamespaceUrl)[0];
                 
-
-                XmlNode keyXml = firma._xadesSignedXml.KeyInfo.GetXml().GetElementsByTagName("X509Data", SignedXml.XmlDsigNamespaceUrl)[0];
-
                 firma._certificate = new X509Certificate2(Convert.FromBase64String(keyXml.InnerText));
-
+                
                 firma._chain = new X509Chain();
                 firma._chain.Build(firma._certificate);
 
@@ -1097,7 +1096,7 @@ namespace FirmaXadesNet
             {
                 signatureValueElementXpaths = new ArrayList();
                 signatureValueElementXpaths.Add("ds:SignatureValue");
-                signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_xadesSignedXml.GetXml(), signatureValueElementXpaths, _xadesSignedXml);
+                signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_xadesSignedXml, signatureValueElementXpaths);
 
                 byte[] tsa = TimeStampClient.GetTimeStamp(_tsaServer, signatureValueHash, true);
 
@@ -1462,31 +1461,25 @@ namespace FirmaXadesNet
             ArrayList signatureValueElementXpaths;
             byte[] signatureValueHash;
 
-            XmlNode xmlNodoFirma = _xmlDocument.SelectSingleNode("//*[@Id='" + _xadesSignedXml.Signature.Id + "']");
+            XmlElement nodoFirma = _xadesSignedXml.GetSignatureElement();
 
             XmlNamespaceManager nm = new XmlNamespaceManager(_xmlDocument.NameTable);
             nm.AddNamespace("xades", XadesSignedXml.XadesNamespaceUri);
             nm.AddNamespace("ds", SignedXml.XmlDsigNamespaceUrl);
 
-            XmlNode xmlCompleteCertRefs = xmlNodoFirma.SelectSingleNode("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteCertificateRefs", nm);
+            XmlNode xmlCompleteCertRefs = nodoFirma.SelectSingleNode("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteCertificateRefs", nm);
 
             if (xmlCompleteCertRefs == null)
             {
                 ActualizarDocumento();
             }
 
-            XmlDocument auxDoc = new XmlDocument();
-            auxDoc.PreserveWhitespace = true;
-            auxDoc.LoadXml(_xmlDocument.OuterXml);
-
-            xmlNodoFirma = auxDoc.SelectSingleNode("//*[@Id='" + _xadesSignedXml.Signature.Id + "']");
-
             signatureValueElementXpaths = new ArrayList();
             signatureValueElementXpaths.Add("ds:SignatureValue");
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:SignatureTimeStamp");
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteCertificateRefs");
             signatureValueElementXpaths.Add("ds:Object/xades:QualifyingProperties/xades:UnsignedProperties/xades:UnsignedSignatureProperties/xades:CompleteRevocationRefs");
-            signatureValueHash = XMLUtil.ComputeHashValueOfElementList((XmlElement)xmlNodoFirma, signatureValueElementXpaths, _xadesSignedXml);
+            signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_xadesSignedXml, signatureValueElementXpaths);
 
             byte[] tsa = TimeStampClient.GetTimeStamp(_tsaServer, signatureValueHash, true);
 

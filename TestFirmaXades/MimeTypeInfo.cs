@@ -185,7 +185,7 @@ namespace TestFirmaXades
             {"xht", "application/xhtml+xml"},
             {"xhtml", "application/xhtml+xml"},
             {"xls", "application/vnd.ms-excel"},                        
-            {"xml", "application/xml"},
+            {"xml", "text/xml"},
             {"xpm", "image/x-xpixmap"},
             {"xsl", "application/xml"},
             {"xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
