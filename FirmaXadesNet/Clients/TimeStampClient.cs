@@ -31,10 +31,12 @@ using System.Net;
 using Org.BouncyCastle.Math;
 using System.IO;
 
-namespace FirmaXadesNet
+namespace FirmaXadesNet.Clients
 {
     class TimeStampClient
     {
+        #region Public methods
+
         /// <summary>
         /// Realiza la petición de sellado del hash que se pasa como parametro y devuelve la
         /// respuesta del servidor.
@@ -74,5 +76,7 @@ namespace FirmaXadesNet
                 return tsRes.TimeStampToken.GetEncoded();
             }
         }
+
+        #endregion
     }
 }

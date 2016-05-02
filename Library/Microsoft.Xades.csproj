@@ -382,9 +382,9 @@
     </Compile>
     <EmbeddedResource Include="xmldsig-core-schema.xsd" />
     <None Include="Microsoft.Xades.snk" />
-    <None Include="XAdES.xsd">
+    <EmbeddedResource Include="XAdES.xsd">
       <SubType>Designer</SubType>
-    </None>
+    </EmbeddedResource>
     <None Include="xmldsig-core-schema.xsx">
       <DependentUpon>xmldsig-core-schema.xsd</DependentUpon>
     </None>

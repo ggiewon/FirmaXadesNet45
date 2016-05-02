@@ -33,10 +33,12 @@ using System.Collections;
 using Microsoft.Xades;
 using System.Security.Cryptography;
 
-namespace FirmaXadesNet
+namespace FirmaXadesNet.Utils
 {
     class XMLUtil
     {
+        #region Public methods
+
         /// <summary>
         /// Calcula el valor hash para los elementos especificados en elementXpaths
         /// </summary>
@@ -108,5 +110,7 @@ namespace FirmaXadesNet
                 return retVal;
             }
         }
+
+        #endregion
     }
 }

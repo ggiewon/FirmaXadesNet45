@@ -34,14 +34,20 @@ using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 
-namespace FirmaXadesNet
+namespace FirmaXadesNet.Clients
 {
     enum CertificateStatus { Good = 0, Revoked = 1, Unknown = 2 };
 
     class OcspClient
     {
 
+        #region Private variables
+
         private int _bufferSize = 0x8000;
+
+        #endregion
+
+        #region Public methods
 
         /// <summary>
         /// Método que comprueba el estado de un certificado
@@ -58,49 +64,6 @@ namespace FirmaXadesNet
 
             return binaryResp;
         }
-
-        /// <summary>
-        /// Construye la petición web y devuelve el resultado de la misma
-        /// </summary>
-        /// <param name="url"></param>
-        /// <param name="data"></param>
-        /// <param name="contentType"></param>
-        /// <param name="accept"></param>
-        /// <returns></returns>
-        private byte[] PostData(string url, byte[] data, string contentType, string accept)
-        {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "POST";
-            request.ContentType = contentType;
-            request.ContentLength = data.Length;
-            request.Accept = accept;
-            Stream stream = request.GetRequestStream();
-            stream.Write(data, 0, data.Length);
-            stream.Close();
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            Stream respStream = response.GetResponseStream();
-            byte[] resp = ToByteArray(respStream);
-            respStream.Close();
-
-            return resp;
-        }
-
-        
-        private byte[] ToByteArray(Stream stream)
-        {
-            byte[] buffer = new byte[_bufferSize];
-            MemoryStream ms = new MemoryStream();
-
-            int read = 0;
-
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                ms.Write(buffer, 0, read);
-            }
-
-            return ms.ToArray();
-        }
-
 
         /// <summary>
         /// Devuelve la URL del servidor OCSP que contenga el certificado
@@ -144,27 +107,6 @@ namespace FirmaXadesNet
 
             return ocspUrls[0];
         }
-
-        protected static Asn1Object GetExtensionValue(X509Certificate cert,
-                string oid)
-        {
-            if (cert == null)
-            {
-                return null;
-            }
-
-            byte[] bytes = cert.GetExtensionValue(new DerObjectIdentifier(oid)).GetOctets();
-
-            if (bytes == null)
-            {
-                return null;
-            }
-
-            Asn1InputStream aIn = new Asn1InputStream(bytes);
-
-            return aIn.ReadObject();
-        }
-
 
         /// <summary>
         /// Procesa la respuesta del servidor OCSP y devuelve el estado del certificado
@@ -211,6 +153,64 @@ namespace FirmaXadesNet
             return cStatus;
         }
 
+        #endregion
+
+        #region Private methods
+
+        /// <summary>
+        /// Construye la petición web y devuelve el resultado de la misma
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="data"></param>
+        /// <param name="contentType"></param>
+        /// <param name="accept"></param>
+        /// <returns></returns>
+        private byte[] PostData(string url, byte[] data, string contentType, string accept)
+        {
+            byte[] resp;
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "POST";
+            request.ContentType = contentType;
+            request.ContentLength = data.Length;
+            request.Accept = accept;
+            Stream stream = request.GetRequestStream();
+            stream.Write(data, 0, data.Length);
+            stream.Close();
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            Stream respStream = response.GetResponseStream();
+            using (MemoryStream ms = new MemoryStream())
+            {
+                respStream.CopyTo(ms);
+                resp = ms.ToArray();
+                respStream.Close();
+            }
+                        
+            return resp;
+        }       
+
+
+        protected static Asn1Object GetExtensionValue(X509Certificate cert,
+                string oid)
+        {
+            if (cert == null)
+            {
+                return null;
+            }
+
+            byte[] bytes = cert.GetExtensionValue(new DerObjectIdentifier(oid)).GetOctets();
+
+            if (bytes == null)
+            {
+                return null;
+            }
+
+            Asn1InputStream aIn = new Asn1InputStream(bytes);
+
+            return aIn.ReadObject();
+        }
+
+
         private OcspReq GenerateOcspRequest(X509Certificate issuerCert, BigInteger serialNumber)
         {
             CertificateID id = new CertificateID(CertificateID.HashSha1, issuerCert, serialNumber);
@@ -237,5 +237,7 @@ namespace FirmaXadesNet
 
             return ocspRequestGenerator.Generate();
         }
+
+        #endregion
     }
 }

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 
 namespace DemoFirmaElemento
 {
@@ -24,9 +25,10 @@ namespace DemoFirmaElemento
             FirmaXades firmaXades = new FirmaXades();
             string ficheroXml = Application.StartupPath + "\\xsdBOE-A-2011-13169_ex_XAdES_Internally_detached.xml";
 
-            string contenidoXml = File.ReadAllText(ficheroXml);
+            XmlDocument documento = new XmlDocument();
+            documento.Load(ficheroXml);
 
-            firmaXades.FirmarElementoInternallyDetached(contenidoXml, "CONTENT-12ef114d-ac6c-4da3-8caf-50379ed13698", "text/xml");
+            firmaXades.SetContentInternallyDetached(documento, "CONTENT-12ef114d-ac6c-4da3-8caf-50379ed13698", "text/xml");
 
             Dictionary<string, string> namespaces = new Dictionary<string, string>();
             namespaces.Add("enidoc", "http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e");
@@ -34,15 +36,15 @@ namespace DemoFirmaElemento
             namespaces.Add("enids", "http://administracionelectronica.gob.es/ENI/XSD/v1.0/firma");
             namespaces.Add("enifile", "http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e/contenido");
 
-            firmaXades.EstablecerNodoDestinoFirma("enidoc:documento/enids:firmas/enids:firma/enids:ContenidoFirma/enids:FirmaConCertificado", namespaces);
+            firmaXades.SetSignatureDestination("enidoc:documento/enids:firmas/enids:firma/enids:ContenidoFirma/enids:FirmaConCertificado", namespaces);
 
-            firmaXades.Firmar(firmaXades.SeleccionarCertificado());
+            firmaXades.Sign(firmaXades.SelectCertificate());
 
             if (saveFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 using (FileStream fs = new FileStream(saveFileDialog1.FileName, FileMode.Create))
                 {
-                    firmaXades.GuardarFirma(fs);
+                    firmaXades.Save(fs);
                 }
 
                 MessageBox.Show("Fichero guardado correctamente.");

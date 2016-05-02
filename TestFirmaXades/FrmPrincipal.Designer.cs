@@ -308,9 +308,9 @@
             this.cmbAlgoritmo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbAlgoritmo.FormattingEnabled = true;
             this.cmbAlgoritmo.Items.AddRange(new object[] {
-            "SHA1",
-            "SHA256",
-            "SHA512"});
+            "RSAwithSHA1",
+            "RSAwithSHA256",
+            "RSAwithSHA512"});
             this.cmbAlgoritmo.Location = new System.Drawing.Point(16, 375);
             this.cmbAlgoritmo.Name = "cmbAlgoritmo";
             this.cmbAlgoritmo.Size = new System.Drawing.Size(108, 21);
