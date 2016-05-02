@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Security.Cryptography
+namespace Microsoft.Xades
 {
     
     public sealed class RSAPKCS1SHA512SignatureDescription : SignatureDescription

@@ -201,7 +201,7 @@ namespace Microsoft.Xades
             {
                 XadesObject retVal = new XadesObject();
 
-                retVal.LoadXml(this.GetXadesObjectElement(this.GetXml()), this.GetXml());   
+                retVal.LoadXml(this.GetXadesObjectElement(this.GetXml()), this.GetXml());
 
                 return retVal;
             }
@@ -1384,6 +1384,27 @@ namespace Microsoft.Xades
         }
 
 
+        private SignatureDescription GetSignatureDescription()
+        {
+            SignatureDescription description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
+
+            if (description == null)
+            {
+                if (this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+                {
+                    CryptoConfig.AddAlgorithm(typeof(Microsoft.Xades.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
+                }
+                else if (this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512")
+                {
+                    CryptoConfig.AddAlgorithm(typeof(Microsoft.Xades.RSAPKCS1SHA512SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512");
+                }
+
+                description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
+            }
+
+            return description;
+        }
+
         public new void ComputeSignature()
         {
 
@@ -1413,22 +1434,10 @@ namespace Microsoft.Xades
                 }
             }
 
-            SignatureDescription description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
+            SignatureDescription description = GetSignatureDescription();
             if (description == null)
             {
-                if (this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" ||
-                    this.SignedInfo.SignatureMethod == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512")
-                {
-                    CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA256SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
-                    CryptoConfig.AddAlgorithm(typeof(Security.Cryptography.RSAPKCS1SHA512SignatureDescription), "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512");
-                }
-
-                description = CryptoConfig.CreateFromName(this.SignedInfo.SignatureMethod) as SignatureDescription;
-
-                if (description == null)
-                {
-                    throw new CryptographicException("Cryptography_Xml_SignatureDescriptionNotCreated");
-                }                
+                throw new CryptographicException("Cryptography_Xml_SignatureDescriptionNotCreated");
             }
 
             HashAlgorithm hash = description.CreateDigest();
@@ -1438,7 +1447,7 @@ namespace Microsoft.Xades
             }
             //this.GetC14NDigest(hash);
             byte[] hashValue = this.GetC14NDigest(hash, "ds");
-            
+
             this.m_signature.SignatureValue = description.CreateFormatter(signingKey).CreateSignature(hash);
         }
 
@@ -1466,7 +1475,7 @@ namespace Microsoft.Xades
             {
                 return signatureElement;
             }
-            
+
             if (signatureNodeDestination != null)
             {
                 return signatureNodeDestination;
@@ -1492,13 +1501,13 @@ namespace Microsoft.Xades
         {
             List<XmlAttribute> namespaces = new List<XmlAttribute>();
 
-            if (fromElement != null && 
+            if (fromElement != null &&
                 fromElement.ParentNode.NodeType == XmlNodeType.Document)
             {
                 foreach (XmlAttribute attr in fromElement.Attributes)
                 {
                     if (attr.Name.StartsWith("xmlns") && !namespaces.Exists(f => f.Name == attr.Name))
-                    {                        
+                    {
                         namespaces.Add(attr);
                     }
                 }
@@ -1609,7 +1618,7 @@ namespace Microsoft.Xades
                 if (reference2.Type != null && reference2.Type.IndexOf("/v1.3.2") > 0)
                 {
                     reference2.Type = reference2.Type.Replace("/v1.3.2", "");
-                }                
+                }
 
                 if (addXadesNamespace)
                 {
@@ -1633,7 +1642,7 @@ namespace Microsoft.Xades
                         newAttr.Value = attr.Value;
 
                         doc.DocumentElement.Attributes.Append(newAttr);
-                    }                    
+                    }
 
                     CanonicalXmlNodeList_Add.Invoke(refList, new object[] { doc.DocumentElement });
 
@@ -1666,7 +1675,7 @@ namespace Microsoft.Xades
 
                             element.Attributes.Append(newAttr);
                         }
-                        
+
                         XmlNode importedElement = doc.ImportNode(element, true);
                         docElement.AppendChild(importedElement);
                     }
@@ -1678,7 +1687,7 @@ namespace Microsoft.Xades
                     Reference_UpdateHashValue.Invoke(reference2, new object[] { doc, refList });
                 }
                 else
-                {                   
+                {
                     Reference_UpdateHashValue.Invoke(reference2, new object[] { m_containingDocument, refList });
                 }
 
@@ -1688,7 +1697,7 @@ namespace Microsoft.Xades
                     XmlElement xml = reference2.GetXml();
 
                     SetPrefix(XmlDSigPrefix, xml); // <---
-                    
+
                     CanonicalXmlNodeList_Add.Invoke(refList, new object[] { xml });
                 }
 

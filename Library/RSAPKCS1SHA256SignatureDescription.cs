@@ -4,7 +4,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 
-namespace Security.Cryptography
+namespace Microsoft.Xades
 {
     /// <summary>
     ///     <para>

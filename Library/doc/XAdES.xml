@@ -2236,7 +2236,7 @@
             use
             </summary>
         </member>
-        <member name="T:Security.Cryptography.RSAPKCS1SHA256SignatureDescription">
+        <member name="T:Microsoft.Xades.RSAPKCS1SHA256SignatureDescription">
             <summary>
                 <para>
                     The RSAPKCS1SHA256SignatureDescription class provides a signature description implementation
@@ -2299,7 +2299,7 @@
                 </para>
             </summary>
         </member>
-        <member name="M:Security.Cryptography.RSAPKCS1SHA256SignatureDescription.#ctor">
+        <member name="M:Microsoft.Xades.RSAPKCS1SHA256SignatureDescription.#ctor">
             <summary>
                 Construct an RSAPKCS1SHA256SignatureDescription object. The default settings for this object
                 are:
