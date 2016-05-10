@@ -60,37 +60,6 @@ namespace FirmaXadesNet.Utils
             return Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(cert);
         }
 
-        public static bool Verify(X509Certificate2 cert, X509Certificate2 issuer)
-        {
-            Org.BouncyCastle.X509.X509Certificate clientCert = ConvertToX509Certificate(cert);
-            Org.BouncyCastle.X509.X509Certificate issuerCert = ConvertToX509Certificate(issuer);
-
-            try
-            {
-                clientCert.Verify(issuerCert.GetPublicKey());
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-        }
-
-        public static bool Verify(Org.BouncyCastle.X509.X509Crl crl, Org.BouncyCastle.X509.X509Certificate cert)
-        {
-            try
-            {                
-                crl.Verify(cert.GetPublicKey());
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-        }
-
         public static string HexToDecimal(string hex)
         {
             List<int> dec = new List<int> { 0 };

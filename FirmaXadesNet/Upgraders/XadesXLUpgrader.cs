@@ -210,10 +210,10 @@ namespace FirmaXadesNet.Upgraders
                     {
                         X509Certificate2 startOcspCert = DetermineStartCert(new List<X509Certificate2>(ocspCerts));
 
-                        if (!CertUtil.Verify(startOcspCert, enumerator.Current.Certificate))
+                        if (startOcspCert.IssuerName.Name != enumerator.Current.Certificate.SubjectName.Name)
                         {
                             var chainOcsp = CertUtil.GetCertChain(startOcspCert, ocspCerts);
-                            
+
                             AddCertificate(chainOcsp.ChainElements[1].Certificate, unsignedProperties, true, ocspCerts);
                         }
                     }
@@ -256,9 +256,9 @@ namespace FirmaXadesNet.Upgraders
             Org.BouncyCastle.X509.X509Certificate issuerCert = CertUtil.ConvertToX509Certificate(issuer);
 
             foreach (var crlEntry in _firma.CRLEntries)
-            {                               
-                if (CertUtil.Verify(crlEntry, issuerCert) && crlEntry.NextUpdate.Value > DateTime.Now)
-                {                    
+            {
+                if (crlEntry.IssuerDN.Equivalent(issuerCert.SubjectDN) && crlEntry.NextUpdate.Value > DateTime.Now)
+                {
                     if (!crlEntry.IsRevoked(clientCert))
                     {
                         if (!ExistsCRL(unsignedProperties.UnsignedSignatureProperties.CompleteRevocationRefs.CRLRefs.CRLRefCollection,
@@ -383,8 +383,7 @@ namespace FirmaXadesNet.Upgraders
 
                 for (int j = 0; j < certs.Count; j++)
                 {
-                    //if (certs[j].IssuerName.Name == currentCert.SubjectName.Name)
-                    if (CertUtil.Verify(certs[j], currentCert))
+                    if (certs[j].IssuerName.Name == currentCert.SubjectName.Name)
                     {
                         isIssuer = true;
                         break;
