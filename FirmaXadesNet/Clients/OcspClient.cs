@@ -116,6 +116,11 @@ namespace FirmaXadesNet.Clients
         /// <returns></returns>
         public CertificateStatus ProcessOcspResponse(X509Certificate eeCert, X509Certificate issuerCert, byte[] binaryResp)
         {
+            if (binaryResp.Length == 0)
+            {
+                return CertificateStatus.Unknown;
+            }
+            
             OcspResp r = new OcspResp(binaryResp);
             CertificateStatus cStatus = CertificateStatus.Unknown;
 

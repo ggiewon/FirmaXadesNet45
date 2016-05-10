@@ -107,6 +107,14 @@ namespace FirmaXadesNet.Utils
             SetCertDigest(rawCert, digestAlgorithm, destination);
         }
 
+        public static byte[] ComputeHashValue(byte[] value, DigestMethod digestMethod)
+        {
+            using (var alg = DigestUtil.GetHashAlg(digestMethod))
+            {
+                return alg.ComputeHash(value);
+            }
+        }
+
         #endregion
     }
 }

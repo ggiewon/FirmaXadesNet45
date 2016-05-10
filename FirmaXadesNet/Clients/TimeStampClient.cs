@@ -42,14 +42,30 @@ namespace FirmaXadesNet.Clients
         /// </summary>
         /// <param name="url"></param>
         /// <param name="hash"></param>
+        /// <param name="digestMethod"></param>
         /// <param name="certReq"></param>
         /// <returns></returns>
-        public static byte[] GetTimeStamp(string url, byte[] hash, bool certReq)
+        public static byte[] GetTimeStamp(string url, byte[] hash, DigestMethod digestMethod, bool certReq)
         {
+            string digestAlg;
+            
             TimeStampRequestGenerator tsrq = new TimeStampRequestGenerator();
             tsrq.SetCertReq(certReq);
 
-            TimeStampRequest tsr = tsrq.Generate(TspAlgorithms.Sha1, hash, BigInteger.ValueOf(100));
+            if (digestMethod == DigestMethod.SHA1)
+            {
+                digestAlg = TspAlgorithms.Sha1;
+            }
+            else if (digestMethod == DigestMethod.SHA256)
+            {
+                digestAlg = TspAlgorithms.Sha256;
+            }
+            else
+            {
+                digestAlg = TspAlgorithms.Sha512;
+            }
+
+            TimeStampRequest tsr = tsrq.Generate(digestAlg, hash, BigInteger.ValueOf(100));
             byte[] data = tsr.GetEncoded();
 
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);

@@ -21,6 +21,7 @@
 // 
 // --------------------------------------------------------------------------------------------------------------------
 
+using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,14 +35,17 @@ namespace FirmaXadesNet.Utils
     {
         #region Public methods
 
-        public static X509Chain GetCertChain(X509Certificate2 certificate)
+        public static X509Chain GetCertChain(X509Certificate2 certificate, X509Certificate2[] certificates = null)
         {
             X509Chain chain = new X509Chain();
 
-            chain.ChainPolicy.RevocationFlag = X509RevocationFlag.EntireChain;
             chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            chain.ChainPolicy.UrlRetrievalTimeout = new TimeSpan(0, 0, 30);
-            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreWrongUsage;
+
+            if (certificates != null)
+            {
+                chain.ChainPolicy.ExtraStore.AddRange(certificates);
+            }
 
             if (!chain.Build(certificate))
             {
@@ -49,6 +53,42 @@ namespace FirmaXadesNet.Utils
             }
 
             return chain;
+        }
+
+        public static Org.BouncyCastle.X509.X509Certificate ConvertToX509Certificate(X509Certificate2 cert)
+        {
+            return Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(cert);
+        }
+
+        public static bool Verify(X509Certificate2 cert, X509Certificate2 issuer)
+        {
+            Org.BouncyCastle.X509.X509Certificate clientCert = ConvertToX509Certificate(cert);
+            Org.BouncyCastle.X509.X509Certificate issuerCert = ConvertToX509Certificate(issuer);
+
+            try
+            {
+                clientCert.Verify(issuerCert.GetPublicKey());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        public static bool Verify(Org.BouncyCastle.X509.X509Crl crl, Org.BouncyCastle.X509.X509Certificate cert)
+        {
+            try
+            {                
+                crl.Verify(cert.GetPublicKey());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         public static string HexToDecimal(string hex)

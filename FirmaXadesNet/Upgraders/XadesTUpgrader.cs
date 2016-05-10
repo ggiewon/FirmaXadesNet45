@@ -63,9 +63,9 @@ namespace FirmaXadesNet.Upgraders
 
                 signatureValueElementXpaths = new ArrayList();
                 signatureValueElementXpaths.Add("ds:SignatureValue");
-                signatureValueHash = XMLUtil.ComputeHashValueOfElementList(_firma.XadesSignature, signatureValueElementXpaths);
+                signatureValueHash = DigestUtil.ComputeHashValue(XMLUtil.ComputeValueOfElementList(_firma.XadesSignature, signatureValueElementXpaths), DigestMethod.SHA1);
 
-                byte[] tsa = TimeStampClient.GetTimeStamp(_firma.TSAServer, signatureValueHash, true);
+                byte[] tsa = TimeStampClient.GetTimeStamp(_firma.TSAServer, signatureValueHash, DigestMethod.SHA1, true);
 
                 signatureTimeStamp = new TimeStamp("SignatureTimeStamp");
                 signatureTimeStamp.Id = "SignatureTimeStamp-" + _firma.XadesSignature.Signature.Id;

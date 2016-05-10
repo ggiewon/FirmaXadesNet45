@@ -1085,28 +1085,15 @@ namespace FirmaXadesNet
                 {
                     XmlElement xmlSigned = _xadesSignedXml.GetXml();
 
-                    MemoryStream canonicalizedStream;
-                    XmlDsigC14NTransform xmlDsigC14NTransform;
-                    UTF8Encoding encoding = new UTF8Encoding(false);
-                    byte[] buffer = encoding.GetBytes(xmlSigned.OuterXml);
-
-                    using (MemoryStream ms = new MemoryStream(buffer))
-                    {
-                        xmlDsigC14NTransform = new XmlDsigC14NTransform();
-                        xmlDsigC14NTransform.LoadInput(ms);
-                        canonicalizedStream = (MemoryStream)xmlDsigC14NTransform.GetOutput(typeof(Stream));
-                        canonicalizedStream.Flush();
-                    }
+                    byte[] canonicalizedElement = XMLUtil.ApplyTransform(xmlSigned, new XmlDsigC14NTransform());
 
                     XmlDocument doc = new XmlDocument();
                     doc.PreserveWhitespace = true;
-                    doc.Load(canonicalizedStream);
+                    doc.LoadXml(Encoding.UTF8.GetString(canonicalizedElement));
 
                     XmlNode canonSignature = _document.ImportNode(doc.DocumentElement, true);
 
                     _xadesSignedXml.GetSignatureElement().AppendChild(canonSignature);
-
-                    canonicalizedStream.Dispose();
                 }
             }
             else
